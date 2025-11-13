@@ -1,154 +1,141 @@
-#include <WiFi.h>
-#include <WebServer.h>
+#include <Arduino.h>
 #include <Wire.h>
-#include "MPU6050.h"
+#include <WiFi.h>
+#include <SPIFFS.h>
 
-MPU6050 mpu;
+#include "MPU6050_light.h"
 
-// ---------------------------
-// WIFI AP CONFIG
-// ---------------------------
-const char* ssid = "TremorDevice";
-const char* password = "12345678";
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
 
-WebServer server(80);
+MPU6050 mpu(Wire);
 
-// ---------------------------
-// HTML PAGE WITH CUSTOM GRAPH
-// ---------------------------
-const char MAIN_page[] PROGMEM = R"=====(
-<!DOCTYPE html>
-<html>
-<head>
-<title>Tremor Dashboard</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-    body { background:#000; color:#fff; font-family:Arial; padding:20px; }
-    h2 { margin-bottom:5px; }
-</style>
-</head>
-<body>
+// =============================
+//       FILTER CONSTANTS
+// =============================
+const float HPF_ALPHA = 0.95;   // High-pass strength (gravity removal)
+const float LPF_ALPHA = 0.20;   // Low-pass smoothing (noise removal)
 
-<h2>Tremor Dashboard</h2>
-<p>Status: <span id="status">Connected</span></p>
+// Previous samples for HPF + LPF
+float prevRawX = 0, prevRawY = 0, prevRawZ = 0;
+float prevHPFX = 0, prevHPFY = 0, prevHPFZ = 0;
 
-<canvas id="chart" width="900" height="300" style="border:1px solid #333;"></canvas>
+float prevBPFx = 0, prevBPFy = 0, prevBPFz = 0;
 
-<script>
-let canvas = document.getElementById('chart');
-let ctx = canvas.getContext('2d');
+// =============================
+//        WiFi + SERVER
+// =============================
+AsyncWebServer server(80);
+AsyncEventSource events("/events");
 
-let width = canvas.width;
-let height = canvas.height;
+const char* ap_ssid = "TremorDevice";
+const char* ap_pass = "12345678";
 
-let dataX = new Array(200).fill(0);
-let dataY = new Array(200).fill(0);
-let dataZ = new Array(200).fill(0);
+// =================================================
+//              FILTER FUNCTIONS
+// =================================================
 
-function draw() {
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, width, height);
-
-    function line(data, color) {
-        ctx.strokeStyle = color;
-        ctx.beginPath();
-        for (let i = 0; i < data.length; i++) {
-            let x = (i / data.length) * width;
-            let y = height/2 - (data[i] * 40);
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-    }
-
-    line(dataX, "red");
-    line(dataY, "green");
-    line(dataZ, "blue");
-
-    requestAnimationFrame(draw);
-}
-draw();
-
-async function poll() {
-  try {
-    const r = await fetch("/data");
-    const t = await r.text();
-    const p = t.split(",");
-
-    let x = parseFloat(p[0]);
-    let y = parseFloat(p[1]);
-    let z = parseFloat(p[2]);
-
-    dataX.push(x); dataX.shift();
-    dataY.push(y); dataY.shift();
-    dataZ.push(z); dataZ.shift();
-
-  } catch(e) {}
-
-  setTimeout(poll, 30);
-}
-poll();
-</script>
-
-</body>
-</html>
-)=====";
-
-
-// ---------------------------
-// SEND HTML PAGE
-// ---------------------------
-void handleRoot() {
-    server.send_P(200, "text/html", MAIN_page);
+float highPass(float current, float prevRaw, float prevFiltered) {
+    return HPF_ALPHA * (prevFiltered + current - prevRaw);
 }
 
-// ---------------------------
-// SEND SENSOR VALUES
-// ---------------------------
-void handleData() {
-    int16_t ax, ay, az;
-    mpu.getAcceleration(&ax, &ay, &az);
-
-    // Convert to G values (~16384 per G)
-    float x = ax / 16384.0;
-    float y = ay / 16384.0;
-    float z = az / 16384.0;
-
-    String s = String(x, 3) + "," + String(y, 3) + "," + String(z, 3);
-    server.send(200, "text/plain", s);
+float lowPass(float current, float prevFiltered) {
+    return prevFiltered + LPF_ALPHA * (current - prevFiltered);
 }
 
-// ---------------------------
-// SETUP
-// ---------------------------
+float bandPass(float raw, float &prevRaw, float &prevHPF, float &prevLPF) {
+    float hpf = highPass(raw, prevRaw, prevHPF);
+    prevRaw = raw;
+    prevHPF = hpf;
+
+    float bpf = lowPass(hpf, prevLPF);
+    prevLPF = bpf;
+
+    return bpf;
+}
+
+// =================================================
+//            SEND DATA TO BROWSER
+// =================================================
+void sendSensorData() {
+    mpu.update();
+
+    // Raw accelerometer data (in Gs)
+    float axRaw = mpu.getAccX();
+    float ayRaw = mpu.getAccY();
+    float azRaw = mpu.getAccZ();
+
+    // Apply band-pass filtering
+    float ax = bandPass(axRaw, prevRawX, prevHPFX, prevBPFx);
+    float ay = bandPass(ayRaw, prevRawY, prevHPFY, prevBPFy);
+    float az = bandPass(azRaw, prevRawZ, prevHPFZ, prevBPFz);
+
+    // Format as "x,y,z"
+    String payload = String(ax, 4) + "," + String(ay, 4) + "," + String(az, 4);
+
+    events.send(payload.c_str(), "message");
+}
+
+// =================================================
+//                    SETUP
+// =================================================
 void setup() {
     Serial.begin(115200);
-    Wire.begin();
+    delay(300);
+
+    // -------- SPIFFS FILESYSTEM --------
+    if (!SPIFFS.begin(true)) {
+        Serial.println("SPIFFS Mount Failed!");
+        return;
+    }
+    Serial.println("SPIFFS mounted successfully.");
+
+    // -------- I2C + MPU --------
+    Wire.begin(21, 22);
+    delay(200);
 
     Serial.println("Initializing MPU6050...");
-    mpu.initialize();
-    delay(500);
+    byte status = mpu.begin();
 
-    Serial.print("Test connection: ");
-    Serial.println(mpu.testConnection() ? "MPU SUCCESS" : "MPU FAILURE");
+    if (status != 0) {
+        Serial.println("MPU FAIL — ignoring and continuing.");
+    } else {
+        Serial.println("MPU Ready.");
+        mpu.calcOffsets();
+    }
 
-    Serial.println("Starting WiFi AP...");
+    // -------- WIFI ACCESS POINT --------
+    Serial.println("Starting WiFi Access Point...");
     WiFi.mode(WIFI_AP);
-    WiFi.softAP(ssid, password);
-
+    WiFi.softAP(ap_ssid, ap_pass);
     Serial.print("AP IP: ");
     Serial.println(WiFi.softAPIP());
 
-    server.on("/", handleRoot);
-    server.on("/data", handleData);
+    // -------- HTTP ROUTES --------
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(SPIFFS, "/index.html", "text/html");
+    });
+
+    server.serveStatic("/", SPIFFS, "/");
+
+    // SSE / REALTIME STREAM
+    server.addHandler(&events);
 
     server.begin();
-    Serial.println("HTTP server started");
+    Serial.println("HTTP server started.");
 }
 
-// ---------------------------
-// LOOP
-// ---------------------------
+// =================================================
+//                    LOOP
+// =================================================
+unsigned long lastSend = 0;
+
 void loop() {
-    server.handleClient();
+    unsigned long now = millis();
+
+    // 50 Hz data stream to browser (20ms)
+    if (now - lastSend >= 20) {
+        sendSensorData();
+        lastSend = now;
+    }
 }

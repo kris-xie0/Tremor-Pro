@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Tremor Dashboard</title>
+
+    <style>
+        body {
+            background: black;
+            color: white;
+            font-family: Arial;
+            padding: 20px;
+        }
+        #status {
+            margin-bottom: 20px;
+        }
+        canvas {
+            border: 1px solid #333;
+        }
+    </style>
+</head>
+<body>
+
+<h2>Tremor Dashboard</h2>
+<div id="status">Connecting...</div>
+
+<canvas id="chart" width="900" height="300"></canvas>
+
+<script>
+let canvas = document.getElementById('chart');
+let ctx = canvas.getContext('2d');
+
+let W = canvas.width;
+let H = canvas.height;
+
+// Data buffers
+let dataX = [];
+let dataY = [];
+let dataZ = [];
+const MAX_POINTS = 200;
+
+// Smoothing (ease between points)
+function smoothCurve(points) {
+    if (points.length < 2) return points;
+
+    let smooth = [];
+    for (let i = 0; i < points.length - 1; i++) {
+        let p0 = points[i];
+        let p1 = points[i + 1];
+        let m = (p0 + p1) / 2;
+        smooth.push(p0);
+        smooth.push(m);   // mid point (Bezier-like smoothing)
+    }
+    smooth.push(points[points.length - 1]);
+    return smooth;
+}
+
+// Draw graph
+function drawGraph() {
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, W, H);
+
+    function plot(data, color) {
+        let s = smoothCurve(data);
+
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+
+        for (let i = 0; i < s.length; i++) {
+            let x = (i / s.length) * W;
+            let y = H/2 - (s[i] * 80); // scaling factor
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+
+        ctx.stroke();
+    }
+
+    plot(dataX, "red");
+    plot(dataY, "green");
+    plot(dataZ, "cyan");
+}
+
+// Receive SSE data
+const source = new EventSource('/events');
+
+source.onmessage = (e) => {
+    const parts = e.data.split(",");
+    if (parts.length !== 3) return;
+
+    let x = parseFloat(parts[0]);
+    let y = parseFloat(parts[1]);
+    let z = parseFloat(parts[2]);
+
+    dataX.push(x);
+    dataY.push(y);
+    dataZ.push(z);
+
+    if (dataX.length > MAX_POINTS) { dataX.shift(); dataY.shift(); dataZ.shift(); }
+
+    drawGraph(); // draw ONLY when new data arrives
+};
+
+source.onopen = () => {
+    document.getElementById("status").innerText = "Connected";
+};
+
+source.onerror = () => {
+    document.getElementById("status").innerText = "Reconnecting...";
+};
+</script>
+
+
+</body>
+</html>
