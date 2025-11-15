@@ -1,192 +1,355 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Tremor Dashboard — Band (Absolute)</title>
+<meta charset="UTF-8">
+<title>Tremor Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
-body{background:#000;color:#fff;font-family:Segoe UI,Roboto,Arial;margin:0;padding:18px}
-.top{display:flex;gap:16px;align-items:center;margin-bottom:12px}
-#status{min-width:120px}
-#scoreBox{font-size:18px}
-#barOuter{flex:1;height:14px;background:#222;border-radius:8px;overflow:hidden}
-#barInner{height:100%;width:0;background:linear-gradient(90deg,#00ff99,#ffff00,#ff3333);transition:width .12s}
-.controls{margin-top:8px;display:flex;gap:10px;align-items:center}
-button,select{background:#222;color:#fff;border:1px solid #444;padding:6px 10px;border-radius:6px}
-.mainRow{display:flex;gap:18px;margin-top:18px}
-.panel{background:#101010;border:1px solid #333;padding:12px;flex:1}
-.panel h2{margin:0 0 8px 0;font-size:16px}
-.axisLabel{font-size:12px;color:#bbb;text-align:center;margin-top:6px}
-canvas{width:100%;display:block;background:#000}
-.badge{display:inline-block;padding:6px 12px;border-radius:8px;font-weight:700}
-.small{font-size:12px;color:#bbb}
-.bandBar{height:18px;background:#222;border-radius:6px;overflow:hidden;margin:6px 0}
-.bandFill{height:100%;width:0;background:#66ccff;transition:width .15s}
+    body {
+        margin: 0;
+        padding: 0;
+        background: #0d0d0d;
+        font-family: "Inter", sans-serif;
+        color: white;
+        overflow-x: hidden;
+    }
+
+    /* ===== HEADER ===== */
+    .header {
+        width: 100%;
+        padding: 20px 32px;
+        background: #111;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        box-sizing: border-box;
+    }
+
+    .header-title {
+        font-size: 26px;
+        font-weight: 600;
+    }
+
+    .status {
+        font-size: 15px;
+        opacity: 0.85;
+    }
+
+    /* ===== TOP CONTROL BAR ===== */
+    .top-bar {
+        width: 100%;
+        padding: 22px 32px 0px 32px;
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        flex-wrap: wrap;
+        box-sizing: border-box;
+    }
+
+    .top-item {
+        font-size: 17px;
+        margin-right: 8px;
+    }
+
+    .score-bar {
+        width: 340px;
+        height: 14px;
+        background: #222;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: inset 0 0 5px rgba(0,0,0,0.4);
+    }
+
+    .score-fill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #00ff87, #ffeb3b, #ff0033);
+        border-radius: 10px;
+        transition: width 0.2s ease;
+    }
+
+    /* ===== BUTTONS ===== */
+    .btn {
+        background: #1c1c1c;
+        padding: 10px 16px;
+        border-radius: 12px;
+        color: white;
+        border: 1px solid rgba(255,255,255,0.12);
+        font-size: 14px;
+        cursor: pointer;
+        transition: 0.15s ease;
+    }
+
+    .btn:hover {
+        background: #262626;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255,255,255,0.12);
+    }
+
+    /* ===== MAIN CONTENT WRAPPER ===== */
+    .content {
+        display: flex;
+        flex-direction: row;
+        gap: 28px;
+        padding: 24px 32px 40px 32px;
+        box-sizing: border-box;
+    }
+
+    /* ===== PANELS ===== */
+    .panel {
+        flex: 1;
+        background: rgba(255,255,255,0.03);
+        padding: 20px;
+        border-radius: 16px;
+        border: 1px solid rgba(255,255,255,0.06);
+        box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+        backdrop-filter: blur(12px);
+        box-sizing: border-box;
+    }
+
+    .panel-title {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 18px;
+        opacity: 0.9;
+    }
+
+    /* ===== CANVASES ===== */
+    canvas {
+        width: 100%;
+        border-radius: 12px;
+        background: #0b0b0b;
+        box-shadow: inset 0 0 14px rgba(0,0,0,0.5);
+    }
+
+    /* ===== CLASSIFICATION BOX ===== */
+    .class-box {
+        margin-top: 18px;
+        padding: 12px 14px;
+        background: rgba(255,255,255,0.05);
+        border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.08);
+        font-size: 16px;
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 900px) {
+        .content {
+            flex-direction: column;
+        }
+        .score-bar {
+            width: 240px;
+        }
+    }
 </style>
 </head>
+
 <body>
 
-<div class="top">
-  <div id="status">Connecting...</div>
-  <div id="scoreBox">Tremor Score: 0.00 / 10</div>
-  <div id="barOuter"><div id="barInner"></div></div>
+<!-- ===== HEADER ===== -->
+<div class="header">
+    <div class="header-title">Tremor Dashboard</div>
+    <div id="statusTxt" class="status">Connecting…</div>
 </div>
 
-<div class="controls">
-  <button id="savePng">Save Spectrogram PNG</button>
-  <button id="dlCsv">Download Tremor CSV</button>
-  <label>Palette:
-    <select id="pal"><option value="p">Plasma</option><option value="i">Inferno</option><option value="v">Viridis</option></select>
-  </label>
-</div>
+<!-- ===== TOP BAR ===== -->
+<div class="top-bar">
 
-<div class="mainRow">
-  <div class="panel">
-    <h2>Waveform (HPF + detrend)</h2>
-    <canvas id="wf" height="260"></canvas>
-    <div class="axisLabel">Time → <span class="small">Y = acceleration (g)</span></div>
-  </div>
-
-  <div class="panel">
-    <h2>Band Spectrogram (rows: 8–12,6–8,4–6 Hz)</h2>
-    <canvas id="spec" height="300"></canvas>
-    <div class="axisLabel">Time → (new column per window)</div>
-
-    <div style="margin-top:8px">
-      <div id="typeBadge" class="badge" style="background:#444;color:#fff">No Tremor</div>
-      <div id="conf" class="small" style="margin-left:12px;display:inline-block">Confidence: 0%</div>
-      <div id="meanNorm" class="small" style="margin-left:12px;display:inline-block">meanNorm: 0.000</div>
+    <div class="top-item">
+        Tremor Score: <span id="scoreVal">0.0</span> / 10
     </div>
 
-    <div style="margin-top:12px">
-      <div class="small">4–6 Hz (Parkinsonian)</div>
-      <div class="bandBar"><div id="b1" class="bandFill" style="background:#ff6666"></div></div>
-
-      <div class="small">6–8 Hz (Essential)</div>
-      <div class="bandBar"><div id="b2" class="bandFill" style="background:#ffd166"></div></div>
-
-      <div class="small">8–12 Hz (Physiological)</div>
-      <div class="bandBar"><div id="b3" class="bandFill" style="background:#66d9ff"></div></div>
+    <div class="score-bar">
+        <div id="scoreFill" class="score-fill"></div>
     </div>
 
-    <div style="margin-top:8px" class="small">Band powers (raw): <span id="pvals">—</span></div>
-  </div>
+    <button id="saveImageBtn" class="btn">Save Spectrogram</button>
+    <button id="saveCsvBtn" class="btn">Export CSV</button>
+
 </div>
 
+<!-- ===== MAIN PANELS ===== -->
+<div class="content">
+
+    <!-- Left panel: waveform -->
+    <div class="panel">
+        <div class="panel-title">Waveform (HPF + detrend)</div>
+        <canvas id="wf" height="260"></canvas>
+    </div>
+
+    <!-- Right panel: spectrogram -->
+    <div class="panel">
+        <div class="panel-title">Band Spectrogram</div>
+        <canvas id="spec" height="260"></canvas>
+
+        <div id="classBox" class="class-box">
+            Classification: —
+        </div>
+    </div>
+
+</div>
+
+<!-- ===== FULL JAVASCRIPT (YOUR WORKING VERSION) ===== -->
 <script>
-// Config
+
 const SAMPLE_RATE = 50;
 const WINDOW = 128;
-const MAX_POWER = 25.0; // calibrated from your data
-let palette = 'p';
+const MAX_POWER = 25.0;
 
-// Waveform
-const wf = document.getElementById('wf'), wctx = wf.getContext('2d');
-let ax=[],ay=[],az=[]; 
+// waveform
+const wf = document.getElementById('wf');
+const wctx = wf.getContext('2d');
+let ax=[],ay=[],az=[];
 const MAX_PTS = 500;
-function resizeWF(){ wf.width = wf.clientWidth; } resizeWF(); window.addEventListener('resize', resizeWF);
+
+function resizeWF(){ wf.width = wf.clientWidth; }
+resizeWF();
+window.addEventListener('resize', resizeWF);
 
 function drawWF(){
-  wctx.clearRect(0,0,wf.width,wf.height);
-  // grid
-  wctx.strokeStyle='#222'; wctx.lineWidth=1;
-  for(let i=0;i<=4;i++){ let y=i*(wf.height/4); wctx.beginPath(); wctx.moveTo(0,y); wctx.lineTo(wf.width,y); wctx.stroke(); }
-  // time ticks
-  const pxPerSec = wf.width / (MAX_PTS/50);
-  wctx.fillStyle='#888'; wctx.font='11px Segoe UI';
-  for(let x=0;x<wf.width;x+=pxPerSec){ wctx.fillText(Math.round(x/pxPerSec)+'s', x+2, wf.height-6); }
-  // plots
-  function plot(arr,col){ wctx.strokeStyle=col; wctx.lineWidth=1.6; wctx.beginPath();
-    for(let i=0;i<arr.length;i++){ let x=(i/MAX_PTS)*wf.width; let y=wf.height/2 - arr[i]*80; if(i===0) wctx.moveTo(x,y); else wctx.lineTo(x,y); } wctx.stroke(); }
-  plot(ax,'#00ffff'); plot(ay,'#ff6666'); plot(az,'#66ff88');
-  requestAnimationFrame(drawWF);
+    wctx.clearRect(0,0,wf.width,wf.height);
+    wctx.strokeStyle='#222';
+    for(let i=0;i<=4;i++){
+        const y = i*(wf.height/4);
+        wctx.beginPath(); wctx.moveTo(0,y); wctx.lineTo(wf.width,y); wctx.stroke();
+    }
+
+    function plot(arr,color){
+        wctx.strokeStyle=color;
+        wctx.beginPath();
+        for(let i=0;i<arr.length;i++){
+            let x=(i/MAX_PTS)*wf.width;
+            let y=wf.height/2 - arr[i]*80;
+            if(i===0) wctx.moveTo(x,y); else wctx.lineTo(x,y);
+        }
+        wctx.stroke();
+    }
+
+    plot(ax,'#00ffff');
+    plot(ay,'#ff6666');
+    plot(az,'#66ff88');
+
+    requestAnimationFrame(drawWF);
 }
 requestAnimationFrame(drawWF);
 
-// Spectrogram offscreen
-const spec = document.getElementById('spec'), sctx = spec.getContext('2d');
-let specOff = document.createElement('canvas'); specOff.width = 240; specOff.height = spec.height;
-let offCtx = specOff.getContext('2d'); offCtx.fillStyle='#000'; offCtx.fillRect(0,0,specOff.width,specOff.height);
-function resizeSpec(){ spec.width = spec.clientWidth; spec.height = spec.clientHeight; specOff.height = spec.height; } resizeSpec(); window.addEventListener('resize', resizeSpec);
+// spectrogram
+const spec = document.getElementById('spec');
+const sctx = spec.getContext('2d');
+let specOff = document.createElement('canvas');
+specOff.width = 240;
+specOff.height = spec.height;
+let offCtx = specOff.getContext('2d');
+offCtx.fillStyle = '#000';
+offCtx.fillRect(0,0,specOff.width,specOff.height);
 
-// palettes
-function pal_plasma(t){ t=Math.max(0,Math.min(1,t)); const r=Math.floor(255*(t)); const g=Math.floor(200*(t*0.7)); const b=Math.floor(180*(1-t)); return `rgb(${r},${g},${b})`; }
-function pal_inferno(t){ t=Math.max(0,Math.min(1,t)); const r=Math.floor(255*(t)); const g=Math.floor(200*(t*0.6)); const b=Math.floor(150*(1-t)); return `rgb(${r},${g},${b})`; }
-function pal_viridis(t){ t=Math.max(0,Math.min(1,t)); const r=Math.floor(200*(t)); const g=Math.floor(255*(t)); const b=Math.floor(200*(1-t)); return `rgb(${r},${g},${b})`; }
+function resizeSpec(){
+    spec.width = spec.clientWidth;
+    spec.height = spec.clientHeight;
+    specOff.height = spec.height;
+}
+resizeSpec();
+window.addEventListener('resize', resizeSpec);
 
 function cmap(v){
-  if (palette==='p') return pal_plasma(v);
-  if (palette==='i') return pal_inferno(v);
-  return pal_viridis(v);
+    v = Math.max(0,Math.min(1,v));
+    const r = Math.floor(255*v);
+    const g = Math.floor(200*v*0.7);
+    const b = Math.floor(180*(1-v));
+    return `rgb(${r},${g},${b})`;
 }
 
-// push band column absolute-scaling
-function pushBandColumn(P1,P2,P3,meanNorm){
-  const w = specOff.width, h = specOff.height;
-  const img = offCtx.getImageData(1,0,w-1,h); offCtx.putImageData(img,0,0);
-  // compute normalized absolute values
-  const v1 = Math.min(P1 / MAX_POWER, 1.0);
-  const v2 = Math.min(P2 / MAX_POWER, 1.0);
-  const v3 = Math.min(P3 / MAX_POWER, 1.0);
-  const stripeH = Math.floor(h/3);
-  // top = 8-12 -> v3 ; middle = 6-8 -> v2 ; bottom = 4-6 -> v1
-  offCtx.fillStyle = cmap(v3); offCtx.fillRect(w-1, 0, 1, stripeH);
-  offCtx.fillStyle = cmap(v2); offCtx.fillRect(w-1, stripeH, 1, stripeH);
-  offCtx.fillStyle = cmap(v1); offCtx.fillRect(w-1, stripeH*2, 1, stripeH);
+function pushBandColumn(P1,P2,P3){
+    const w=specOff.width, h=specOff.height;
+    const img = offCtx.getImageData(1,0,w-1,h);
+    offCtx.putImageData(img,0,0);
+
+    const v1=Math.min(P1/MAX_POWER,1);
+    const v2=Math.min(P2/MAX_POWER,1);
+    const v3=Math.min(P3/MAX_POWER,1);
+
+    const stripe = Math.floor(h/3);
+    offCtx.fillStyle=cmap(v3); offCtx.fillRect(w-1,0,1,stripe);
+    offCtx.fillStyle=cmap(v2); offCtx.fillRect(w-1,stripe,1,stripe);
+    offCtx.fillStyle=cmap(v1); offCtx.fillRect(w-1,stripe*2,1,stripe);
 }
 
-// draw spec
 function drawSpec(){
-  sctx.clearRect(0,0,spec.width,spec.height);
-  sctx.drawImage(specOff,0,0,spec.width,spec.height);
-  // band separators
-  sctx.strokeStyle='rgba(255,255,255,0.06)'; sctx.lineWidth=1;
-  const stripeH = spec.height/3;
-  for(let i=1;i<3;i++){ sctx.beginPath(); sctx.moveTo(0,i*stripeH); sctx.lineTo(spec.width,i*stripeH); sctx.stroke(); }
-  requestAnimationFrame(drawSpec);
+    sctx.clearRect(0,0,spec.width,spec.height);
+    sctx.drawImage(specOff,0,0,spec.width,spec.height);
+    const h=spec.height;
+    const stripe = h/3;
+    sctx.strokeStyle='rgba(255,255,255,0.06)';
+    for(let i=1;i<3;i++){
+        sctx.beginPath(); sctx.moveTo(0,i*stripe); sctx.lineTo(spec.width,i*stripe); sctx.stroke();
+    }
+    requestAnimationFrame(drawSpec);
 }
 requestAnimationFrame(drawSpec);
 
-// UI elements
-const typeBadge = document.getElementById('typeBadge'), confEl = document.getElementById('conf');
-const b1 = document.getElementById('b1'), b2 = document.getElementById('b2'), b3 = document.getElementById('b3');
-const pvals = document.getElementById('pvals'), meanNormEl = document.getElementById('meanNorm');
+// UI
+const scoreFill=document.getElementById('scoreFill');
+const scoreVal=document.getElementById('scoreVal');
+const classBox=document.getElementById('classBox');
+const statusTxt=document.getElementById('statusTxt');
 
-function updateBandsUI(P1,P2,P3,type,conf,score,meanNorm){
-  // absolute fills using MAX_POWER
-  b1.style.width = Math.min((P1 / MAX_POWER) * 100,100) + "%";
-  b2.style.width = Math.min((P2 / MAX_POWER) * 100,100) + "%";
-  b3.style.width = Math.min((P3 / MAX_POWER) * 100,100) + "%";
-  pvals.innerText = `${P1.toFixed(4)}, ${P2.toFixed(4)}, ${P3.toFixed(4)}`;
-  meanNormEl.innerText = "meanNorm: " + meanNorm.toFixed(3);
-
-  // badge color
-  if (type === "Parkinsonian"){ typeBadge.innerText="Parkinsonian"; typeBadge.style.background="#b30000"; typeBadge.style.color="#fff"; }
-  else if (type === "Essential"){ typeBadge.innerText="Essential"; typeBadge.style.background="#ffb84d"; typeBadge.style.color="#000"; }
-  else if (type === "Physiological"){ typeBadge.innerText="Physiological"; typeBadge.style.background="#00a8ff"; typeBadge.style.color="#000"; }
-  else if (type === "Voluntary Movement"){ typeBadge.innerText="Voluntary Movement"; typeBadge.style.background="#7a7a7a"; typeBadge.style.color="#fff"; }
-  else { typeBadge.innerText="No Tremor"; typeBadge.style.background="#444"; typeBadge.style.color="#fff"; }
-  confEl.innerText = "Confidence: " + Math.round(conf*100) + "%";
-  document.getElementById('scoreBox').innerText = "Tremor Score: " + score.toFixed(2) + " / 10";
-  document.getElementById('barInner').style.width = (score*10) + "%";
-}
-
-// CSV and PNG
-let tremorHistory = [];
-document.getElementById('savePng').onclick = ()=>{ let url = spec.toDataURL('image/png'); let a=document.createElement('a'); a.href=url; a.download='band_spectrogram.png'; a.click(); };
-document.getElementById('dlCsv').onclick = ()=>{ let csv="timestamp_ms,b1,b2,b3,type,conf,score,meanNorm\n"; tremorHistory.forEach(r=>{ csv += `${r.t},${r.b1},${r.b2},${r.b3},${r.type},${r.conf},${r.score},${r.meanNorm}\n`; }); let blob=new Blob([csv],{type:'text/csv'}); let a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='tremor_bands.csv'; a.click(); };
-
-// palette selector
-document.getElementById('pal').onchange = (e)=>{ palette = e.target.value; };
+// data store
+let tremorHistory=[];
 
 // SSE
-const s = new EventSource('/events');
-s.onopen = ()=> document.getElementById('status').innerText = "Connected";
-s.onerror = ()=> document.getElementById('status').innerText = "Disconnected";
-s.addEventListener('sample', e=>{ const d = JSON.parse(e.data); ax.push(d.ax); ay.push(d.ay); az.push(d.az); if (ax.length > MAX_PTS) { ax.shift(); ay.shift(); az.shift(); } });
-s.addEventListener('bands', e=>{ const j = JSON.parse(e.data); const P1=parseFloat(j.b1), P2=parseFloat(j.b2), P3=parseFloat(j.b3); const type=j.type, conf=parseFloat(j.confidence), score=parseFloat(j.score), meanNorm=parseFloat(j.meanNorm); updateBandsUI(P1,P2,P3,type,conf,score,meanNorm); tremorHistory.push({t:Date.now(),b1:P1,b2:P2,b3:P3,type:type,conf:conf,score:score,meanNorm:meanNorm}); });
-s.addEventListener('bands_csv', e=>{ const parts = e.data.split(','); if(parts.length>=4){ const P1=parseFloat(parts[0]), P2=parseFloat(parts[1]), P3=parseFloat(parts[2]); const meanNorm=parseFloat(parts[3]); pushBandColumn(P1,P2,P3,meanNorm); }});
+const s=new EventSource('/events');
+s.onopen=()=>statusTxt.innerText="Connected";
+s.onerror=()=>statusTxt.innerText="Disconnected";
+
+s.addEventListener('sample',e=>{
+    const d=JSON.parse(e.data);
+    ax.push(d.ax); ay.push(d.ay); az.push(d.az);
+    if(ax.length>MAX_PTS){ ax.shift(); ay.shift(); az.shift(); }
+});
+
+s.addEventListener('bands',e=>{
+    const j=JSON.parse(e.data);
+    updateUI(j.b1,j.b2,j.b3,j.type,j.confidence,j.score);
+    tremorHistory.push({t:Date.now(),...j});
+});
+
+function updateUI(P1,P2,P3,type,conf,score){
+    // score bar
+    scoreFill.style.width = (score*10) + "%";
+    scoreVal.innerText = score.toFixed(1);
+
+    // classification
+    classBox.innerText = "Classification: " + type;
+
+    // spectrogram bars
+    pushBandColumn(P1,P2,P3);
+}
+
+// CSV download
+document.getElementById('saveCsvBtn').onclick=()=>{
+    let csv="timestamp,b1,b2,b3,type,conf,score\n";
+    tremorHistory.forEach(r=>{
+        csv+=`${r.t},${r.b1},${r.b2},${r.b3},${r.type},${r.confidence},${r.score}\n`;
+    });
+    const blob=new Blob([csv],{type:"text/csv"});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download="tremor_data.csv";
+    a.click();
+};
+
+// PNG download
+document.getElementById('saveImageBtn').onclick=()=>{
+    const url = spec.toDataURL("image/png");
+    const a=document.createElement('a');
+    a.href=url;
+    a.download="spectrogram.png";
+    a.click();
+};
 
 </script>
+
 </body>
 </html>
