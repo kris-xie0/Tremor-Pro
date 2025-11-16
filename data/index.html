@@ -6,16 +6,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
+    :root {
+        --bg: #0d0d0d;
+        --panel: rgba(255,255,255,0.03);
+        --accent1: #00ff87;
+        --accent2: #ffeb3b;
+        --accent3: #ff4455;
+        --muted: #888;
+    }
+
     body {
         margin: 0;
         padding: 0;
-        background: #0d0d0d;
-        font-family: "Inter", sans-serif;
+        background: var(--bg);
         color: white;
+        font-family: "Inter", sans-serif;
         overflow-x: hidden;
     }
 
-    /* ===== HEADER ===== */
+    /* Header */
     .header {
         width: 100%;
         padding: 20px 32px;
@@ -26,51 +35,26 @@
         border-bottom: 1px solid rgba(255,255,255,0.05);
         box-sizing: border-box;
     }
-
     .header-title {
         font-size: 26px;
         font-weight: 600;
     }
-
     .status {
-        font-size: 15px;
-        opacity: 0.85;
+        font-size: 14px;
+        color: var(--muted);
     }
 
-    /* ===== TOP CONTROL BAR ===== */
-    .top-bar {
+    /* Controls */
+    .controls {
         width: 100%;
-        padding: 22px 32px 0px 32px;
+        padding: 22px 32px 0 32px;
         display: flex;
-        align-items: center;
         gap: 24px;
+        align-items: center;
         flex-wrap: wrap;
         box-sizing: border-box;
     }
 
-    .top-item {
-        font-size: 17px;
-        margin-right: 8px;
-    }
-
-    .score-bar {
-        width: 340px;
-        height: 14px;
-        background: #222;
-        border-radius: 10px;
-        overflow: hidden;
-        box-shadow: inset 0 0 5px rgba(0,0,0,0.4);
-    }
-
-    .score-fill {
-        height: 100%;
-        width: 0%;
-        background: linear-gradient(90deg, #00ff87, #ffeb3b, #ff0033);
-        border-radius: 10px;
-        transition: width 0.2s ease;
-    }
-
-    /* ===== BUTTONS ===== */
     .btn {
         background: #1c1c1c;
         padding: 10px 16px;
@@ -81,26 +65,54 @@
         cursor: pointer;
         transition: 0.15s ease;
     }
-
     .btn:hover {
         background: #262626;
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(255,255,255,0.12);
     }
 
-    /* ===== MAIN CONTENT WRAPPER ===== */
-    .content {
+    .topRow {
         display: flex;
-        flex-direction: row;
-        gap: 28px;
+        gap: 16px;
+        align-items: center;
+    }
+
+    .scoreBox {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    .scoreVal {
+        font-size: 20px;
+        font-weight: 700;
+    }
+    .scoreBar {
+        width: 260px;
+        height: 14px;
+        background: #222;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    .scoreFill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, var(--accent1), var(--accent2), var(--accent3));
+        border-radius: 12px;
+        transition: width 0.15s ease;
+    }
+
+    /* Layout Grid */
+    .layout {
+        display: grid;
+        grid-template-columns: 1fr 420px;
+        gap: 20px;
         padding: 24px 32px 40px 32px;
         box-sizing: border-box;
     }
 
-    /* ===== PANELS ===== */
+    /* Panel */
     .panel {
-        flex: 1;
-        background: rgba(255,255,255,0.03);
+        background: var(--panel);
         padding: 20px;
         border-radius: 16px;
         border: 1px solid rgba(255,255,255,0.06);
@@ -108,15 +120,12 @@
         backdrop-filter: blur(12px);
         box-sizing: border-box;
     }
-
     .panel-title {
         font-size: 18px;
         font-weight: 600;
-        margin-bottom: 18px;
-        opacity: 0.9;
+        margin-bottom: 12px;
     }
 
-    /* ===== CANVASES ===== */
     canvas {
         width: 100%;
         border-radius: 12px;
@@ -124,95 +133,229 @@
         box-shadow: inset 0 0 14px rgba(0,0,0,0.5);
     }
 
-    /* ===== CLASSIFICATION BOX ===== */
+    .small {
+        color: var(--muted);
+        font-size: 13px;
+    }
+
+    /* Band Meter */
+    .meters {
+        display: flex;
+        gap: 14px;
+        align-items: flex-end;
+        height: 140px;
+        margin-top: 12px;
+    }
+    .meter {
+        width: 70px;
+        background: rgba(255,255,255,0.03);
+        border-radius: 10px;
+        padding: 8px;
+        text-align: center;
+    }
+    .meterFill {
+        width: 100%;
+        height: 0%;
+        border-radius: 6px;
+        transition: height 0.15s ease;
+    }
+    .meterLabel {
+        margin-top: 8px;
+        font-size: 12px;
+    }
+
+    /* Session Summary */
+    .summary {
+        display: flex;
+        flex-direction: column;
+        margin-top: 16px;
+        gap: 6px;
+    }
+
+    /* Classification Box */
     .class-box {
         margin-top: 18px;
         padding: 12px 14px;
-        background: rgba(255,255,255,0.05);
-        border-radius: 10px;
-        border: 1px solid rgba(255,255,255,0.08);
-        font-size: 16px;
+        background: rgba(255,255,255,0.06);
+        border-radius: 12px;
+        border: 1px solid rgba(255,255,255,0.1);
+        font-size: 15px;
+        font-weight: 600;
     }
 
-    /* ===== RESPONSIVE ===== */
-    @media (max-width: 900px) {
-        .content {
-            flex-direction: column;
-        }
-        .score-bar {
-            width: 240px;
-        }
+    /* Trend Graph */
+    .trendBox {
+        height: 120px;
+        margin-top: 12px;
+    }
+
+    @media(max-width: 980px){
+        .layout { grid-template-columns: 1fr; }
+        .meters { height: 100px; }
     }
 </style>
 </head>
 
 <body>
 
-<!-- ===== HEADER ===== -->
+<!-- ============ HEADER ============ -->
 <div class="header">
     <div class="header-title">Tremor Dashboard</div>
-    <div id="statusTxt" class="status">Connecting…</div>
+    <div id="status" class="status">Connecting…</div>
 </div>
 
-<!-- ===== TOP BAR ===== -->
-<div class="top-bar">
+<!-- ============ CONTROLS ============ -->
+<div class="controls">
 
-    <div class="top-item">
-        Tremor Score: <span id="scoreVal">0.0</span> / 10
+    <div class="topRow">
+        <div class="scoreBox">
+            <div class="small">Tremor Score</div>
+            <div class="scoreVal" id="scoreVal">0.00 / 10</div>
+        </div>
+
+        <div class="scoreBar">
+            <div id="scoreFill" class="scoreFill"></div>
+        </div>
     </div>
 
-    <div class="score-bar">
-        <div id="scoreFill" class="score-fill"></div>
-    </div>
-
-    <button id="saveImageBtn" class="btn">Save Spectrogram</button>
-    <button id="saveCsvBtn" class="btn">Export CSV</button>
-
+    <button id="startCalib" class="btn">Start Calibration</button>
+    <button id="saveCSV" class="btn">Export CSV</button>
+    <button id="savePNG" class="btn">Save Spectrogram</button>
 </div>
 
-<!-- ===== MAIN PANELS ===== -->
-<div class="content">
+<!-- ============ MAIN LAYOUT ============ -->
+<div class="layout">
 
-    <!-- Left panel: waveform -->
-    <div class="panel">
-        <div class="panel-title">Waveform (HPF + detrend)</div>
-        <canvas id="wf" height="260"></canvas>
+    <!-- LEFT COLUMN -->
+    <div>
+
+        <!-- Waveform Panel -->
+        <div class="panel">
+            <div class="panel-title">Waveform (HPF + Detrend)</div>
+
+            <div class="small" style="margin-bottom:6px;">
+                Y-Axis: Filtered Acceleration (g)
+            </div>
+
+            <canvas id="wf" height="200"></canvas>
+
+            <div class="small" style="margin-top:6px;text-align:center;">
+                X-Axis: Time (recent ~10s)
+            </div>
+        </div>
+
+        <div style="height:18px"></div>
+
+        <!-- Trend Graph -->
+        <div class="panel">
+            <div class="panel-title">Score Trend (last 2 min)</div>
+
+            <div class="small" style="margin-bottom:4px;">
+                Y-Axis: Tremor Score (0–10)
+            </div>
+
+            <div class="trendBox">
+                <canvas id="trend" height="120"></canvas>
+            </div>
+
+            <div class="small" style="margin-top:6px;text-align:center;">
+                X-Axis: Time (scrolling)
+            </div>
+        </div>
+
     </div>
 
-    <!-- Right panel: spectrogram -->
-    <div class="panel">
-        <div class="panel-title">Band Spectrogram</div>
-        <canvas id="spec" height="260"></canvas>
+    <!-- RIGHT COLUMN -->
+    <div>
 
-        <div id="classBox" class="class-box">
-            Classification: —
+        <!-- Spectrogram -->
+        <div class="panel">
+            <div class="panel-title">Band Spectrogram</div>
+
+            <div class="small" style="margin-bottom:6px;">
+                Y-Axis: Frequency Bands (Top: 8–12 Hz • Mid: 6–8 Hz • Bottom: 4–6 Hz)
+            </div>
+
+            <canvas id="spec" height="240"></canvas>
+
+            <div class="small" style="margin-top:6px;text-align:center;">
+                X-Axis: Time (scrolling)
+            </div>
+
+            <div id="classBox" class="class-box">
+                Classification: —
+            </div>
+        </div>
+
+        <div style="height:12px"></div>
+
+        <!-- Meters -->
+        <div class="panel">
+            <div class="panel-title">Band Power Meters</div>
+
+            <div class="meters">
+                <div class="meter">
+                    <div id="m3" class="meterFill" style="background:#66d9ff"></div>
+                    <div class="meterLabel">8–12 Hz</div>
+                </div>
+                <div class="meter">
+                    <div id="m2" class="meterFill" style="background:#ffd166"></div>
+                    <div class="meterLabel">6–8 Hz</div>
+                </div>
+                <div class="meter">
+                    <div id="m1" class="meterFill" style="background:#ff6666"></div>
+                    <div class="meterLabel">4–6 Hz</div>
+                </div>
+            </div>
+
+            <div class="summary" id="sessionSummary">
+                <div><strong>Session Summary</strong></div>
+                <div class="small" id="sessDur">Duration: 0s</div>
+                <div class="small" id="sessAvg">Avg Score: 0.00</div>
+                <div class="small" id="sessPeak">Peak Score: 0.00</div>
+                <div class="small" id="sessDom">Dominant: —</div>
+            </div>
+        </div>
+
+        <div style="height:12px"></div>
+
+        <!-- Calibration Panel -->
+        <div class="panel">
+            <div class="panel-title">Calibration</div>
+            <div id="calibStatus" class="small">Not calibrated</div>
+            <div class="small" style="margin-top:8px">
+                Baseline noise: <span id="calibVal">—</span>
+            </div>
         </div>
     </div>
 
 </div>
 
-<!-- ===== FULL JAVASCRIPT (YOUR WORKING VERSION) ===== -->
-<script>
+<!-- ========================================================= -->
+<!-- ====================== JAVASCRIPT ======================== -->
+<!-- ========================================================= -->
 
+<script>
+/* ========== Constants ========== */
 const SAMPLE_RATE = 50;
 const WINDOW = 128;
 const MAX_POWER = 25.0;
+const TREND_SLOTS = 50;
 
-// waveform
-const wf = document.getElementById('wf');
-const wctx = wf.getContext('2d');
+/* ========== Waveform ========== */
+const wf = document.getElementById('wf'),
+      wctx = wf.getContext('2d');
 let ax=[],ay=[],az=[];
-const MAX_PTS = 500;
+const MAX_PTS=500;
 
 function resizeWF(){ wf.width = wf.clientWidth; }
-resizeWF();
-window.addEventListener('resize', resizeWF);
+resizeWF(); window.addEventListener('resize', resizeWF);
 
 function drawWF(){
     wctx.clearRect(0,0,wf.width,wf.height);
     wctx.strokeStyle='#222';
     for(let i=0;i<=4;i++){
-        const y = i*(wf.height/4);
+        let y=i*(wf.height/4);
         wctx.beginPath(); wctx.moveTo(0,y); wctx.lineTo(wf.width,y); wctx.stroke();
     }
 
@@ -226,38 +369,28 @@ function drawWF(){
         }
         wctx.stroke();
     }
-
-    plot(ax,'#00ffff');
-    plot(ay,'#ff6666');
-    plot(az,'#66ff88');
+    plot(ax,'#00ffff'); plot(ay,'#ff6666'); plot(az,'#66ff88');
 
     requestAnimationFrame(drawWF);
 }
 requestAnimationFrame(drawWF);
 
-// spectrogram
-const spec = document.getElementById('spec');
-const sctx = spec.getContext('2d');
-let specOff = document.createElement('canvas');
-specOff.width = 240;
-specOff.height = spec.height;
-let offCtx = specOff.getContext('2d');
-offCtx.fillStyle = '#000';
-offCtx.fillRect(0,0,specOff.width,specOff.height);
+/* ========== Spectrogram ========== */
+const spec=document.getElementById('spec'),
+      sctx=spec.getContext('2d');
+let specOff=document.createElement('canvas');
+specOff.width=300; specOff.height=spec.height;
+let offCtx=specOff.getContext('2d');
+offCtx.fillStyle='#000'; offCtx.fillRect(0,0,specOff.width,specOff.height);
 
-function resizeSpec(){
-    spec.width = spec.clientWidth;
-    spec.height = spec.clientHeight;
-    specOff.height = spec.height;
-}
-resizeSpec();
-window.addEventListener('resize', resizeSpec);
+function resizeSpec(){ spec.width=spec.clientWidth; spec.height=spec.clientHeight; specOff.height=spec.height; }
+resizeSpec(); window.addEventListener('resize', resizeSpec);
 
 function cmap(v){
-    v = Math.max(0,Math.min(1,v));
-    const r = Math.floor(255*v);
-    const g = Math.floor(200*v*0.7);
-    const b = Math.floor(180*(1-v));
+    v=Math.max(0,Math.min(1,v));
+    const r=Math.floor(255*v);
+    const g=Math.floor(220*v*0.7);
+    const b=Math.floor(180*(1-v));
     return `rgb(${r},${g},${b})`;
 }
 
@@ -270,79 +403,176 @@ function pushBandColumn(P1,P2,P3){
     const v2=Math.min(P2/MAX_POWER,1);
     const v3=Math.min(P3/MAX_POWER,1);
 
-    const stripe = Math.floor(h/3);
-    offCtx.fillStyle=cmap(v3); offCtx.fillRect(w-1,0,1,stripe);
-    offCtx.fillStyle=cmap(v2); offCtx.fillRect(w-1,stripe,1,stripe);
-    offCtx.fillStyle=cmap(v1); offCtx.fillRect(w-1,stripe*2,1,stripe);
+    const bandHeight=h/3;
+
+    offCtx.fillStyle=cmap(v3);
+    offCtx.fillRect(w-1,0,1,bandHeight);
+
+    offCtx.fillStyle=cmap(v2);
+    offCtx.fillRect(w-1,bandHeight,1,bandHeight);
+
+    offCtx.fillStyle=cmap(v1);
+    offCtx.fillRect(w-1,bandHeight*2,1,bandHeight);
 }
 
 function drawSpec(){
     sctx.clearRect(0,0,spec.width,spec.height);
     sctx.drawImage(specOff,0,0,spec.width,spec.height);
-    const h=spec.height;
-    const stripe = h/3;
+
+    const stripe=spec.height/3;
     sctx.strokeStyle='rgba(255,255,255,0.06)';
     for(let i=1;i<3;i++){
-        sctx.beginPath(); sctx.moveTo(0,i*stripe); sctx.lineTo(spec.width,i*stripe); sctx.stroke();
+        sctx.beginPath();
+        sctx.moveTo(0,stripe*i);
+        sctx.lineTo(spec.width,stripe*i);
+        sctx.stroke();
     }
     requestAnimationFrame(drawSpec);
 }
 requestAnimationFrame(drawSpec);
 
-// UI
+/* ========== Trend Graph ========== */
+const trend=document.getElementById('trend'),
+      tctx=trend.getContext('2d');
+let trendData=new Array(TREND_SLOTS).fill(0);
+
+function resizeTrend(){ trend.width=trend.clientWidth; trend.height=trend.clientHeight; }
+resizeTrend(); window.addEventListener('resize', resizeTrend);
+
+function drawTrend(){
+    tctx.clearRect(0,0,trend.width,trend.height);
+
+    tctx.strokeStyle='rgba(255,255,255,0.06)';
+    for(let i=1;i<6;i++){
+        let y=i*(trend.height/6);
+        tctx.beginPath(); tctx.moveTo(0,y); tctx.lineTo(trend.width,y); tctx.stroke();
+    }
+
+    tctx.strokeStyle='#66ffcc';
+    tctx.beginPath();
+    for(let i=0;i<trendData.length;i++){
+        let x=(i/(trendData.length-1))*trend.width;
+        let y=trend.height - (trendData[i]/10)*trend.height;
+        if(i===0) tctx.moveTo(x,y); else tctx.lineTo(x,y);
+    }
+    tctx.stroke();
+
+    requestAnimationFrame(drawTrend);
+}
+requestAnimationFrame(drawTrend);
+
+/* ========== Meters ========== */
+const m1=document.getElementById('m1'),
+      m2=document.getElementById('m2'),
+      m3=document.getElementById('m3');
+
+/* ========== Classification, Score, Summary ========== */
+const classBox=document.getElementById('classBox');
 const scoreFill=document.getElementById('scoreFill');
 const scoreVal=document.getElementById('scoreVal');
-const classBox=document.getElementById('classBox');
-const statusTxt=document.getElementById('statusTxt');
 
-// data store
+const sessDur=document.getElementById('sessDur'),
+      sessAvg=document.getElementById('sessAvg'),
+      sessPeak=document.getElementById('sessPeak'),
+      sessDom=document.getElementById('sessDom');
+
+const calibStatus=document.getElementById('calibStatus'),
+      calibVal=document.getElementById('calibVal');
+
 let tremorHistory=[];
 
-// SSE
-const s=new EventSource('/events');
-s.onopen=()=>statusTxt.innerText="Connected";
-s.onerror=()=>statusTxt.innerText="Disconnected";
+/* ========== SSE ========== */
+const evt=new EventSource('/events');
 
-s.addEventListener('sample',e=>{
+evt.onopen=()=>{ document.getElementById('status').innerText="Connected"; };
+evt.onerror=()=>{ document.getElementById('status').innerText="Disconnected"; };
+
+evt.addEventListener('sample', e=>{
     const d=JSON.parse(e.data);
     ax.push(d.ax); ay.push(d.ay); az.push(d.az);
     if(ax.length>MAX_PTS){ ax.shift(); ay.shift(); az.shift(); }
 });
 
-s.addEventListener('bands',e=>{
+evt.addEventListener('bands', e=>{
     const j=JSON.parse(e.data);
-    updateUI(j.b1,j.b2,j.b3,j.type,j.confidence,j.score);
-    tremorHistory.push({t:Date.now(),...j});
+    const P1=j.b1, P2=j.b2, P3=j.b3;
+
+    m1.style.height = Math.min(P1/MAX_POWER,1)*100+"%";
+    m2.style.height = Math.min(P2/MAX_POWER,1)*100+"%";
+    m3.style.height = Math.min(P3/MAX_POWER,1)*100+"%";
+
+    const score = j.score;
+    scoreFill.style.width = (score*10)+"%";
+    scoreVal.innerText = score.toFixed(2)+" / 10";
+
+    classBox.innerText="Classification: "+j.type;
+
+    trendData.shift();
+    trendData.push(score);
+
+    tremorHistory.push({
+        t:Date.now(),
+        b1:P1,b2:P2,b3:P3,
+        type:j.type,
+        conf:j.confidence,
+        score:score,
+        meanNorm:j.meanNorm
+    });
 });
 
-function updateUI(P1,P2,P3,type,conf,score){
-    // score bar
-    scoreFill.style.width = (score*10) + "%";
-    scoreVal.innerText = score.toFixed(1);
+evt.addEventListener('bands_csv', e=>{
+    const p=e.data.split(',');
+    if(p.length>=4){
+        pushBandColumn(parseFloat(p[0]),parseFloat(p[1]),parseFloat(p[2]));
+    }
+});
 
-    // classification
-    classBox.innerText = "Classification: " + type;
+evt.addEventListener('calibrated', e=>{
+    const j=JSON.parse(e.data);
+    calibStatus.innerText="Calibrated ✓";
+    calibVal.innerText=j.baseline.toFixed(6);
+});
 
-    // spectrogram bars
-    pushBandColumn(P1,P2,P3);
-}
+/* Session summary */
+evt.addEventListener('session', e=>{
+    const j=JSON.parse(e.data);
+    sessDur.innerText="Duration: "+Math.round(j.duration_ms/1000)+"s";
+    sessAvg.innerText="Avg Score: "+j.avgScore.toFixed(2);
+    sessPeak.innerText="Peak Score: "+j.peakScore.toFixed(2);
+    sessDom.innerText="Dominant: "+j.dominant;
+});
 
-// CSV download
-document.getElementById('saveCsvBtn').onclick=()=>{
-    let csv="timestamp,b1,b2,b3,type,conf,score\n";
+/* ========== Calibration Button ========== */
+document.getElementById('startCalib').onclick = async () => {
+    const btn=document.getElementById('startCalib');
+    btn.innerText="Calibrating… hold still";
+    btn.disabled=true;
+
+    try { await fetch('/startCalib'); }
+    catch(e){ alert("Error sending calibration command."); }
+
+    setTimeout(()=>{
+        btn.innerText="Start Calibration";
+        btn.disabled=false;
+    },5500);
+};
+
+/* ========== CSV Export ========== */
+document.getElementById('saveCSV').onclick=()=>{
+    let csv="timestamp,b1,b2,b3,type,conf,score,meanNorm\n";
     tremorHistory.forEach(r=>{
-        csv+=`${r.t},${r.b1},${r.b2},${r.b3},${r.type},${r.confidence},${r.score}\n`;
+        csv+=`${r.t},${r.b1},${r.b2},${r.b3},${r.type},${r.conf},${r.score},${r.meanNorm}\n`;
     });
-    const blob=new Blob([csv],{type:"text/csv"});
+    const blob=new Blob([csv],{type:'text/csv'});
     const a=document.createElement('a');
     a.href=URL.createObjectURL(blob);
-    a.download="tremor_data.csv";
+    a.download="tremor_session.csv";
     a.click();
 };
 
-// PNG download
-document.getElementById('saveImageBtn').onclick=()=>{
-    const url = spec.toDataURL("image/png");
+/* ========== PNG Export ========== */
+document.getElementById('savePNG').onclick=()=>{
+    const url=spec.toDataURL("image/png");
     const a=document.createElement('a');
     a.href=url;
     a.download="spectrogram.png";
@@ -350,6 +580,5 @@ document.getElementById('saveImageBtn').onclick=()=>{
 };
 
 </script>
-
 </body>
 </html>
