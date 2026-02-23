@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Tremor AI Clinical Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="AI-powered clinical tremor analysis dashboard — connects to ESP32 sensor, accumulates session data, and generates clinical reports via MedGemma.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg: #09090b;
+            --surface: rgba(255, 255, 255, 0.04);
+            --surface2: rgba(255, 255, 255, 0.07);
+            --border: rgba(255, 255, 255, 0.08);
+            --border-accent: rgba(168, 85, 247, 0.25);
+            --text: #fafafa;
+            --text-muted: #71717a;
+            --accent: #a855f7;
+            --accent-dim: rgba(168, 85, 247, 0.15);
+            --green: #22c55e;
+            --yellow: #eab308;
+            --red: #ef4444;
+            --cyan: #06b6d4;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', system-ui, sans-serif;
+            min-height: 100vh;
+        }
+
+        /* ─── Header ─── */
+        .header {
+            padding: 20px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            background: rgba(9, 9, 11, 0.8);
+            backdrop-filter: blur(12px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .header-icon {
+            font-size: 28px;
+        }
+
+        .header-title {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .header-sub {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-badge .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-badge.disconnected {
+            background: rgba(239, 68, 68, 0.12);
+            color: var(--red);
+        }
+
+        .status-badge.disconnected .dot {
+            background: var(--red);
+        }
+
+        .status-badge.connected {
+            background: rgba(34, 197, 94, 0.12);
+            color: var(--green);
+        }
+
+        .status-badge.connected .dot {
+            background: var(--green);
+            animation: pulse-dot 2s infinite;
+        }
+
+        .status-badge.recording {
+            background: rgba(234, 179, 8, 0.12);
+            color: var(--yellow);
+        }
+
+        .status-badge.recording .dot {
+            background: var(--yellow);
+            animation: pulse-dot 1s infinite;
+        }
+
+        @keyframes pulse-dot {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        /* ─── Controls ─── */
+        .controls {
+            padding: 20px 32px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .input-group label {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .input-group input {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: var(--text);
+            font-size: 13px;
+            font-family: inherit;
+            width: 200px;
+            transition: 0.15s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-dim);
+        }
+
+        .btn {
+            padding: 9px 16px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            color: var(--text);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: inherit;
+            transition: 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-default {
+            background: var(--surface2);
+        }
+
+        .btn-default:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #7c3aed, #a855f7);
+            border-color: rgba(168, 85, 247, 0.4);
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.2);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 0 28px rgba(168, 85, 247, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, #059669, #22c55e);
+            border-color: rgba(34, 197, 94, 0.4);
+        }
+
+        .btn-start:hover {
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+        }
+
+        .btn-stop {
+            background: linear-gradient(135deg, #dc2626, #ef4444);
+            border-color: rgba(239, 68, 68, 0.4);
+        }
+
+        .btn-stop:hover {
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+        }
+
+        .spacer {
+            flex: 1;
+        }
+
+        /* ─── Layout ─── */
+        .main {
+            display: grid;
+            grid-template-columns: 1fr 440px;
+            gap: 20px;
+            padding: 24px 32px 40px;
+        }
+
+        @media(max-width:1024px) {
+            .main {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ─── Panels ─── */
+        .panel {
+            background: var(--surface);
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+        }
+
+        .panel+.panel {
+            margin-top: 16px;
+        }
+
+        .panel-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-title .icon {
+            font-size: 16px;
+        }
+
+        /* ─── Live Stats Grid ─── */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .stat-card {
+            background: var(--surface2);
+            padding: 14px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 500;
+        }
+
+        .stat-value {
+            font-size: 22px;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+
+        .stat-value.green {
+            color: var(--green);
+        }
+
+        .stat-value.yellow {
+            color: var(--yellow);
+        }
+
+        .stat-value.red {
+            color: var(--red);
+        }
+
+        .stat-value.cyan {
+            color: var(--cyan);
+        }
+
+        /* ─── Band Bars ─── */
+        .band-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .band-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .band-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            width: 60px;
+            text-align: right;
+            font-weight: 500;
+        }
+
+        .band-track {
+            flex: 1;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .band-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 0.2s;
+        }
+
+        .band-fill.b1 {
+            background: linear-gradient(90deg, #ef4444, #f97316);
+        }
+
+        .band-fill.b2 {
+            background: linear-gradient(90deg, #eab308, #f59e0b);
+        }
+
+        .band-fill.b3 {
+            background: linear-gradient(90deg, #06b6d4, #3b82f6);
+        }
+
+        .band-pct {
+            font-size: 12px;
+            width: 40px;
+            font-weight: 600;
+        }
+
+        /* ─── Session Log ─── */
+        .session-log {
+            max-height: 180px;
+            overflow-y: auto;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+            color: var(--text-muted);
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 10px;
+            line-height: 1.6;
+        }
+
+        .session-log::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .session-log::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+        }
+
+        /* ─── AI Report Panel ─── */
+        .ai-panel {
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.06), rgba(168, 85, 247, 0.04));
+            border: 1px solid rgba(168, 85, 247, 0.15);
+            padding: 24px;
+            border-radius: 16px;
+        }
+
+        .ai-panel .panel-title {
+            color: #c084fc;
+        }
+
+        .ai-content {
+            font-size: 14px;
+            line-height: 1.8;
+            color: #d4d4d8;
+        }
+
+        .ai-content h3 {
+            color: #c084fc;
+            margin: 16px 0 6px;
+            font-size: 15px;
+        }
+
+        .ai-content strong {
+            color: #e4e4e7;
+        }
+
+        .ai-confidence {
+            margin-top: 14px;
+            padding: 8px 14px;
+            border-radius: 8px;
+            display: inline-block;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .ai-confidence.high {
+            background: rgba(34, 197, 94, 0.12);
+            color: var(--green);
+        }
+
+        .ai-confidence.moderate {
+            background: rgba(234, 179, 8, 0.12);
+            color: var(--yellow);
+        }
+
+        .ai-confidence.low {
+            background: rgba(239, 68, 68, 0.12);
+            color: var(--red);
+        }
+
+        .ai-advisory {
+            margin-top: 14px;
+            padding: 12px 14px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            font-size: 12px;
+            color: var(--text-muted);
+            border-left: 3px solid rgba(234, 179, 8, 0.4);
+            line-height: 1.6;
+        }
+
+        .ai-placeholder {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+        }
+
+        .ai-placeholder .icon {
+            font-size: 40px;
+            margin-bottom: 12px;
+        }
+
+        .ai-placeholder p {
+            font-size: 13px;
+            max-width: 280px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* ─── Window counter ─── */
+        .window-counter {
+            font-size: 13px;
+            color: var(--text-muted);
+            padding: 6px 0;
+        }
+
+        .window-counter strong {
+            color: var(--text);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ═══ HEADER ═══ -->
+    <header class="header">
+        <div class="header-left">
+            <div class="header-icon">🧠</div>
+            <div>
+                <div class="header-title">Tremor AI Dashboard</div>
+                <div class="header-sub">Clinical Reasoning Layer · MedGemma 4B</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <div id="statusBadge" class="status-badge disconnected">
+                <span class="dot"></span>
+                <span id="statusText">Disconnected</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- ═══ CONTROLS ═══ -->
+    <div class="controls">
+        <div class="input-group">
+            <label for="espIP">ESP32 IP:</label>
+            <input type="text" id="espIP" value="192.168.4.1" placeholder="e.g. 192.168.4.1">
+        </div>
+
+        <button id="btnConnect" class="btn btn-default" onclick="connectESP()">📡 Connect</button>
+        <button id="btnStart" class="btn btn-start" onclick="startSession()" disabled>▶ Start Session</button>
+        <button id="btnStop" class="btn btn-stop" onclick="stopSession()" disabled>⏹ Stop Session</button>
+
+        <span class="spacer"></span>
+
+        <div class="window-counter">
+            Windows: <strong id="windowCount">0</strong> · Duration: <strong id="sessionDur">0s</strong>
+        </div>
+
+        <button id="btnAnalyze" class="btn btn-primary" onclick="generateReport()" disabled>🧠 Generate AI
+            Report</button>
+    </div>
+
+    <!-- ═══ MAIN LAYOUT ═══ -->
+    <div class="main">
+
+        <!-- LEFT COLUMN: Live data + session stats -->
+        <div>
+            <!-- Live Stats -->
+            <div class="panel">
+                <div class="panel-title"><span class="icon">📊</span> Live Session Stats</div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Score</div>
+                        <div class="stat-value cyan" id="liveScore">—</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Avg Score</div>
+                        <div class="stat-value green" id="liveAvg">—</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Peak</div>
+                        <div class="stat-value red" id="livePeak">—</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Classification</div>
+                        <div class="stat-value yellow" id="liveClass" style="font-size:14px">—</div>
+                    </div>
+                </div>
+
+                <!-- Band Power Bars -->
+                <div class="panel-title" style="margin-top:8px"><span class="icon">🎛</span> Band Power</div>
+                <div class="band-bars">
+                    <div class="band-row">
+                        <div class="band-label">4–6 Hz</div>
+                        <div class="band-track">
+                            <div class="band-fill b1" id="bar1" style="width:0%"></div>
+                        </div>
+                        <div class="band-pct" id="pct1">0%</div>
+                    </div>
+                    <div class="band-row">
+                        <div class="band-label">6–8 Hz</div>
+                        <div class="band-track">
+                            <div class="band-fill b2" id="bar2" style="width:0%"></div>
+                        </div>
+                        <div class="band-pct" id="pct2">0%</div>
+                    </div>
+                    <div class="band-row">
+                        <div class="band-label">8–12 Hz</div>
+                        <div class="band-track">
+                            <div class="band-fill b3" id="bar3" style="width:0%"></div>
+                        </div>
+                        <div class="band-pct" id="pct3">0%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Session Summary -->
+            <div class="panel">
+                <div class="panel-title"><span class="icon">📋</span> Session Summary</div>
+                <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+                    <div class="stat-card">
+                        <div class="stat-label">Mean Score</div>
+                        <div class="stat-value" id="sumMean" style="font-size:18px">—</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Std Dev</div>
+                        <div class="stat-value" id="sumStd" style="font-size:18px">—</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Dominant Band</div>
+                        <div class="stat-value" id="sumDom" style="font-size:14px">—</div>
+                    </div>
+                </div>
+                <div class="stats-grid" style="grid-template-columns:repeat(4,1fr)">
+                    <div class="stat-card">
+                        <div class="stat-label">Low %</div>
+                        <div class="stat-value green" id="distLow" style="font-size:16px">—</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Moderate %</div>
+                        <div class="stat-value yellow" id="distMod" style="font-size:16px">—</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">High %</div>
+                        <div class="stat-value" id="distHigh" style="font-size:16px;color:#f97316">—</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Very High %</div>
+                        <div class="stat-value red" id="distVHigh" style="font-size:16px">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Event Log -->
+            <div class="panel">
+                <div class="panel-title"><span class="icon">🪵</span> Event Log</div>
+                <div class="session-log" id="eventLog">Waiting for connection…</div>
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN: AI Report -->
+        <div>
+            <div class="ai-panel" id="aiPanel">
+                <div class="panel-title"><span class="icon">🧠</span> AI Clinical Report</div>
+
+                <div class="ai-placeholder" id="aiPlaceholder">
+                    <div class="icon">🔬</div>
+                    <p>Connect to TremorSense, start a session, accumulate data windows, then click <strong>Generate AI
+                            Report</strong> to get a clinical analysis.</p>
+                </div>
+
+                <div id="aiResult" style="display:none">
+                    <div class="ai-content" id="aiContent"></div>
+                    <div id="aiConfidence"></div>
+                    <div class="ai-advisory" id="aiAdvisory"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ═══════════════════════════════════════════
+           STATE
+           ═══════════════════════════════════════════ */
+
+        let sse = null;
+        let sessionActive = false;
+        let sessionWindows = [];
+        let sessionStartTime = 0;
+        let calibratedNoiseFloor = null;   // updated when ESP32 sends a 'calibrated' SSE event
+        // Multi-session trend history — persisted across page reloads via localStorage
+        let sessionHistory = JSON.parse(localStorage.getItem('tremorSessionHistory') || '[]');
+
+        const BACKEND_URL = window.location.origin; // same origin — FastAPI serves this page
+
+        /* ═══════════════════════════════════════════
+           HELPERS
+           ═══════════════════════════════════════════ */
+
+        function log(msg) {
+            const el = document.getElementById('eventLog');
+            const ts = new Date().toLocaleTimeString();
+            el.innerHTML += `\n<span style="color:#555">[${ts}]</span> ${msg}`;
+            el.scrollTop = el.scrollHeight;
+        }
+
+        function setStatus(state, text) {
+            const badge = document.getElementById('statusBadge');
+            const label = document.getElementById('statusText');
+            badge.className = 'status-badge ' + state;
+            label.textContent = text;
+        }
+
+        /* ═══════════════════════════════════════════
+           SSE CONNECTION TO ESP32
+           ═══════════════════════════════════════════ */
+
+        function connectESP() {
+            const ip = document.getElementById('espIP').value.trim();
+            if (!ip) { alert('Enter TremorSense IP address'); return; }
+
+            if (sse) { sse.close(); sse = null; }
+
+            const url = `http://${ip}/events`;
+            log(`Connecting to TremorSense at <strong>${url}</strong>…`);
+            setStatus('disconnected', 'Connecting…');
+
+            try {
+                sse = new EventSource(url);
+            } catch (e) {
+                log(`<span style="color:#ef4444">Failed: ${e.message}</span>`);
+                return;
+            }
+
+            sse.onopen = () => {
+                setStatus('connected', 'Connected');
+                log('<span style="color:#22c55e">✓ SSE connected to TremorSense</span>');
+                document.getElementById('btnStart').disabled = false;
+                document.getElementById('btnConnect').innerText = '🔌 Reconnect';
+            };
+
+            sse.onerror = () => {
+                setStatus('disconnected', 'Disconnected');
+                log('<span style="color:#ef4444">✗ SSE connection lost</span>');
+                document.getElementById('btnStart').disabled = true;
+            };
+
+            // Listen for band data from ESP32
+            sse.addEventListener('bands', e => {
+                const j = JSON.parse(e.data);
+                updateLiveDisplay(j);
+
+                if (sessionActive) {
+                    sessionWindows.push({
+                        b1: j.b1, b2: j.b2, b3: j.b3,
+                        score: j.score,
+                        type: j.type || '',
+                        confidence: j.confidence || 0,
+                        meanNorm: j.meanNorm || 0,
+                        ts: Date.now()
+                    });
+                    updateSessionSummaryDisplay();
+                }
+            });
+
+            // Capture the real noise floor from the ESP32 calibration procedure
+            sse.addEventListener('calibrated', e => {
+                const j = JSON.parse(e.data);
+                calibratedNoiseFloor = j.baseline;
+                log(`<span style="color:#06b6d4">⚖ Calibrated — noise floor: ${j.baseline.toFixed(4)}</span>`);
+            });
+        }
+
+        /* ═══════════════════════════════════════════
+           LIVE DISPLAY (updates every SSE event)
+           ═══════════════════════════════════════════ */
+
+        function updateLiveDisplay(j) {
+            const { b1, b2, b3, score, type } = j;
+            const total = b1 + b2 + b3 || 1;
+
+            document.getElementById('liveScore').textContent = score.toFixed(2);
+            document.getElementById('liveClass').textContent = type || '—';
+
+            const p1 = (b1 / total * 100), p2 = (b2 / total * 100), p3 = (b3 / total * 100);
+            document.getElementById('bar1').style.width = Math.min(p1, 100) + '%';
+            document.getElementById('bar2').style.width = Math.min(p2, 100) + '%';
+            document.getElementById('bar3').style.width = Math.min(p3, 100) + '%';
+            document.getElementById('pct1').textContent = p1.toFixed(0) + '%';
+            document.getElementById('pct2').textContent = p2.toFixed(0) + '%';
+            document.getElementById('pct3').textContent = p3.toFixed(0) + '%';
+        }
+
+        /* ═══════════════════════════════════════════
+           SESSION CONTROL
+           ═══════════════════════════════════════════ */
+
+        function startSession() {
+            sessionWindows = [];
+            sessionStartTime = Date.now();
+            sessionActive = true;
+
+            setStatus('recording', 'Recording');
+            document.getElementById('btnStart').disabled = true;
+            document.getElementById('btnStop').disabled = false;
+            document.getElementById('btnAnalyze').disabled = true;
+            document.getElementById('windowCount').textContent = '0';
+            document.getElementById('sessionDur').textContent = '0s';
+
+            log('<span style="color:#eab308">▶ Session started — accumulating windows…</span>');
+            updateSessionTimer();
+        }
+
+        function stopSession() {
+            sessionActive = false;
+
+            setStatus('connected', 'Connected');
+            document.getElementById('btnStart').disabled = false;
+            document.getElementById('btnStop').disabled = true;
+            document.getElementById('btnAnalyze').disabled = sessionWindows.length < 3;
+
+            log(`<span style="color:#22c55e">⏹ Session stopped — ${sessionWindows.length} windows captured</span>`);
+            updateSessionSummaryDisplay();
+        }
+
+        let timerInterval = null;
+        function updateSessionTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (!sessionActive) { clearInterval(timerInterval); return; }
+                const dur = ((Date.now() - sessionStartTime) / 1000).toFixed(0);
+                document.getElementById('sessionDur').textContent = dur + 's';
+                document.getElementById('windowCount').textContent = sessionWindows.length;
+            }, 500);
+        }
+
+        /* ═══════════════════════════════════════════
+           SESSION SUMMARY DISPLAY
+           ═══════════════════════════════════════════ */
+
+        function updateSessionSummaryDisplay() {
+            const W = sessionWindows;
+            if (W.length === 0) return;
+
+            const scores = W.map(w => w.score);
+            const n = scores.length;
+            const mean = scores.reduce((a, b) => a + b, 0) / n;
+            const std = Math.sqrt(scores.reduce((a, s) => a + (s - mean) ** 2, 0) / n);
+
+            document.getElementById('liveAvg').textContent = mean.toFixed(2);
+            document.getElementById('livePeak').textContent = Math.max(...scores).toFixed(2);
+            document.getElementById('sumMean').textContent = mean.toFixed(2);
+            document.getElementById('sumStd').textContent = std.toFixed(2);
+
+            // Dominant band
+            const b1t = W.reduce((a, w) => a + w.b1, 0);
+            const b2t = W.reduce((a, w) => a + w.b2, 0);
+            const b3t = W.reduce((a, w) => a + w.b3, 0);
+            const dom = b1t >= b2t && b1t >= b3t ? '4–6 Hz' : b2t >= b3t ? '6–8 Hz' : '8–12 Hz';
+            document.getElementById('sumDom').textContent = dom;
+
+            // Distribution
+            const low = scores.filter(s => s < 2.5).length / n;
+            const mod = scores.filter(s => s >= 2.5 && s < 5).length / n;
+            const high = scores.filter(s => s >= 5 && s < 7.5).length / n;
+            const vhigh = scores.filter(s => s >= 7.5).length / n;
+            document.getElementById('distLow').textContent = (low * 100).toFixed(0) + '%';
+            document.getElementById('distMod').textContent = (mod * 100).toFixed(0) + '%';
+            document.getElementById('distHigh').textContent = (high * 100).toFixed(0) + '%';
+            document.getElementById('distVHigh').textContent = (vhigh * 100).toFixed(0) + '%';
+        }
+
+        /* ═══════════════════════════════════════════
+           BUILD SESSION SUMMARY (for backend)
+           ═══════════════════════════════════════════ */
+
+        function percentile(arr, p) {
+            const sorted = [...arr].sort((a, b) => a - b);
+            const idx = (p / 100) * (sorted.length - 1);
+            const lo = Math.floor(idx), hi = Math.ceil(idx);
+            return lo === hi ? sorted[lo] : sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+        }
+
+        function buildSessionSummary() {
+            const W = sessionWindows;
+            if (W.length < 3) return null;
+
+            const scores = W.map(w => w.score);
+            const n = scores.length;
+            const mean = scores.reduce((a, b) => a + b, 0) / n;
+            const std = Math.sqrt(scores.reduce((a, s) => a + (s - mean) ** 2, 0) / n);
+
+            // Band power stats
+            const b1s = W.map(w => w.b1), b2s = W.map(w => w.b2), b3s = W.map(w => w.b3);
+            const b1m = b1s.reduce((a, b) => a + b, 0) / n;
+            const b2m = b2s.reduce((a, b) => a + b, 0) / n;
+            const b3m = b3s.reduce((a, b) => a + b, 0) / n;
+            const b1std = Math.sqrt(b1s.reduce((a, v) => a + (v - b1m) ** 2, 0) / n);
+            const b2std = Math.sqrt(b2s.reduce((a, v) => a + (v - b2m) ** 2, 0) / n);
+            const b3std = Math.sqrt(b3s.reduce((a, v) => a + (v - b3m) ** 2, 0) / n);
+
+            const totBand = b1m + b2m + b3m;
+            const domPct = Math.max(b1m, b2m, b3m) / (totBand || 1);
+            const domBand = b1m >= b2m && b1m >= b3m ? '4_6_hz' : b2m >= b3m ? '6_8_hz' : '8_12_hz';
+            const domRatio = Math.max(b1m, b2m, b3m) / (Math.min(b1m, b2m, b3m) || 0.001);
+
+            // Band switch count
+            let switches = 0;
+            for (let i = 1; i < W.length; i++) {
+                const prevDom = W[i - 1].b1 >= W[i - 1].b2 && W[i - 1].b1 >= W[i - 1].b3 ? 1 : W[i - 1].b2 >= W[i - 1].b3 ? 2 : 3;
+                const curDom = W[i].b1 >= W[i].b2 && W[i].b1 >= W[i].b3 ? 1 : W[i].b2 >= W[i].b3 ? 2 : 3;
+                if (prevDom !== curDom) switches++;
+            }
+
+            // Spectral entropy — normalized Shannon entropy of the 3-band power distribution
+            // 0.0 = single-band dominance (very structured), 1.0 = perfectly uniform across all bands
+            const pBands = [b1m, b2m, b3m].map(v => v / (totBand || 1));
+            const spectralEntropy = +(- pBands.reduce((s, p) => p > 0 ? s + p * Math.log2(p) : s, 0) / Math.log2(3)).toFixed(4);
+
+            // Intensity distribution
+            const low = scores.filter(s => s < 2.5).length / n;
+            const moderate = scores.filter(s => s >= 2.5 && s < 5).length / n;
+            const high = scores.filter(s => s >= 5 && s < 7.5).length / n;
+            const vhigh = scores.filter(s => s >= 7.5).length / n;
+
+            // Variability
+            const cv = std / (mean || 1);
+            const stability = 1 - cv;
+            let wtwVar = 0;
+            for (let i = 1; i < scores.length; i++) wtwVar += (scores[i] - scores[i - 1]) ** 2;
+            wtwVar = wtwVar / (n - 1);
+
+            // Within-session trend
+            const durMin = (W[W.length - 1].ts - W[0].ts) / 60000;
+            const xMean = (n - 1) / 2;
+            let num = 0, den = 0;
+            for (let i = 0; i < n; i++) {
+                num += (i - xMean) * (scores[i] - mean);
+                den += (i - xMean) ** 2;
+            }
+            const slopePerWindow = den ? num / den : 0;
+            const slopePerMin = durMin > 0 ? (slopePerWindow * n) / durMin : 0;
+
+            const halfN = Math.floor(n / 2);
+            const earlyAvg = scores.slice(0, halfN).reduce((a, b) => a + b, 0) / halfN;
+            const lateAvg = scores.slice(halfN).reduce((a, b) => a + b, 0) / (n - halfN);
+            const earlyLateChange = earlyAvg ? ((lateAvg - earlyAvg) / earlyAvg) * 100 : 0;
+
+            const rmsVals = W.map(w => w.meanNorm || 0);
+            const rmsMean = rmsVals.reduce((a, b) => a + b, 0) / n;
+
+            // ── Multi-session trend ──────────────────────────────────────────────
+            // Uses the localStorage history of past sessions (populated after each
+            // successful AI report). Reflects genuine cross-session change.
+            const recentSessions = sessionHistory.slice(-2); // up to 2 previous sessions
+            const allSess = [...recentSessions, { domBand, meanScore: mean, ts: W[W.length - 1].ts }];
+
+            const nSess = allSess.length;
+            const domConsistencyCount = allSess.filter(s => s.domBand === domBand).length;
+            const domBandLabel = domBand.replace(/_/g, '–').replace('hz', ' Hz');
+            const consistencyStr = `${domBandLabel} in ${domConsistencyCount}/${nSess} sessions`;
+
+            // Linear regression of mean score over timestamps → weekly slope
+            let weeklySlope = '+0.0';
+            if (allSess.length >= 2) {
+                const mScores = allSess.map(s => s.meanScore);
+                const mTs = allSess.map(s => s.ts);
+                const tsMean = mTs.reduce((a, b) => a + b, 0) / mTs.length;
+                const sMean2 = mScores.reduce((a, b) => a + b, 0) / mScores.length;
+                let num2 = 0, den2 = 0;
+                mTs.forEach((t, i) => {
+                    num2 += (t - tsMean) * (mScores[i] - sMean2);
+                    den2 += (t - tsMean) ** 2;
+                });
+                const slpPerMs = den2 ? num2 / den2 : 0;
+                const slpPerWeek = slpPerMs * 604800000; // ms → week
+                weeklySlope = (slpPerWeek >= 0 ? '+' : '') + slpPerWeek.toFixed(2);
+            }
+
+            // Severity change: current mean vs. oldest session in the window
+            let severityChangePct = 'N/A (first session)';
+            if (recentSessions.length >= 1) {
+                const oldest = recentSessions[0].meanScore;
+                const chg = oldest > 0 ? ((mean - oldest) / oldest) * 100 : 0;
+                severityChangePct = (chg >= 0 ? '+' : '') + chg.toFixed(1) + '%';
+            }
+
+            // Band shift: true if dominant band changed vs. the previous session
+            const bandShift = recentSessions.length > 0 &&
+                recentSessions[recentSessions.length - 1].domBand !== domBand;
+
+            return {
+                metadata: {
+                    session_id: 'S' + Date.now().toString().slice(-4),
+                    timestamp: new Date().toISOString(),
+                    duration_minutes: parseFloat(durMin.toFixed(2)),
+                    sampling_rate_hz: 50,
+                    condition: 'rest',
+                    medication_status: 'unknown',
+                    tremor_score_scale: '0_to_10_log_scaled'
+                },
+                frequency_profile: {
+                    band_power_mean: { hz_4_6: +b1m.toFixed(3), hz_6_8: +b2m.toFixed(3), hz_8_12: +b3m.toFixed(3) },
+                    band_power_std: { hz_4_6: +b1std.toFixed(3), hz_6_8: +b2std.toFixed(3), hz_8_12: +b3std.toFixed(3) },
+                    dominant_band: domBand,
+                    dominance_ratio: +domRatio.toFixed(2),
+                    dominant_band_percentage: +domPct.toFixed(3),
+                    band_switch_count: switches
+                },
+                intensity_profile: {
+                    tremor_score: {
+                        mean: +mean.toFixed(2), std: +std.toFixed(2),
+                        min: +Math.min(...scores).toFixed(2), max: +Math.max(...scores).toFixed(2),
+                        p25: +percentile(scores, 25).toFixed(2),
+                        p50: +percentile(scores, 50).toFixed(2),
+                        p75: +percentile(scores, 75).toFixed(2),
+                        p90: +percentile(scores, 90).toFixed(2)
+                    },
+                    rms_mean: +rmsMean.toFixed(3),
+                    // Use the real ESP32 calibrated noise floor when available;
+                    // fall back to a 7% heuristic reduction if not yet calibrated.
+                    noise_floor_adjusted_intensity: calibratedNoiseFloor != null
+                        ? +Math.max(0, rmsMean - calibratedNoiseFloor).toFixed(3)
+                        : +(rmsMean * 0.93).toFixed(3)
+                },
+                intensity_distribution: {
+                    low_fraction: +low.toFixed(3),
+                    moderate_fraction: +moderate.toFixed(3),
+                    high_fraction: +high.toFixed(3),
+                    very_high_fraction: +vhigh.toFixed(3)
+                },
+                variability_profile: {
+                    coefficient_of_variation: +cv.toFixed(3),
+                    stability_index: +Math.max(0, stability).toFixed(3),
+                    spectral_entropy: spectralEntropy,
+                    window_to_window_variance: +wtwVar.toFixed(3)
+                },
+                within_session_trend: {
+                    linear_slope_per_minute_score_units: +slopePerMin.toFixed(4),
+                    early_vs_late_change_percent: +earlyLateChange.toFixed(1),
+                    fatigue_pattern_detected: earlyLateChange > 5
+                },
+                multi_session_trend: {
+                    dominant_band_consistency_last_3: consistencyStr,
+                    tremor_score_weekly_slope: weeklySlope,
+                    severity_change_percent: severityChangePct,
+                    band_shift_detected: bandShift
+                }
+            };
+        }
+
+        /* ═══════════════════════════════════════════
+           GENERATE AI REPORT
+           ═══════════════════════════════════════════ */
+
+        async function generateReport() {
+            const btn = document.getElementById('btnAnalyze');
+            const placeholder = document.getElementById('aiPlaceholder');
+            const result = document.getElementById('aiResult');
+            const content = document.getElementById('aiContent');
+            const confEl = document.getElementById('aiConfidence');
+            const advEl = document.getElementById('aiAdvisory');
+
+            const summary = buildSessionSummary();
+            if (!summary) {
+                alert('Not enough data. Collect at least 3 windows before generating a report.');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = '⏳ Analyzing…';
+            placeholder.style.display = 'none';
+            result.style.display = 'block';
+            content.innerHTML = '<p style="color:#71717a">Generating clinical AI report…</p>';
+            confEl.innerHTML = '';
+            advEl.innerText = '';
+            log('<span style="color:#a855f7">🧠 Sending session to backend for AI analysis…</span>');
+
+            try {
+                const resp = await fetch(BACKEND_URL + '/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(summary)
+                });
+
+                if (!resp.ok) throw new Error('Backend returned HTTP ' + resp.status);
+
+                const data = await resp.json();
+
+                // Render markdown-lite
+                let html = data.clinical_summary
+                    .replace(/## (.+)/g, '<h3>$1</h3>')
+                    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\n/g, '<br>');
+                content.innerHTML = html;
+
+                const cl = data.confidence_level.toLowerCase();
+                confEl.className = 'ai-confidence ' + cl;
+                confEl.innerText = '⚡ Confidence: ' + data.confidence_level;
+
+                advEl.innerText = '⚠️ ' + data.advisory_note;
+
+                // Persist this session to localStorage so future sessions can
+                // compute real multi-session trend metrics.
+                sessionHistory.push({
+                    domBand: summary.frequency_profile.dominant_band,
+                    meanScore: summary.intensity_profile.tremor_score.mean,
+                    ts: Date.now()
+                });
+                if (sessionHistory.length > 10) sessionHistory.shift(); // keep last 10
+                localStorage.setItem('tremorSessionHistory', JSON.stringify(sessionHistory));
+
+                log('<span style="color:#22c55e">✓ AI report generated successfully</span>');
+
+            } catch (err) {
+                content.innerHTML = `<p style="color:#ef4444">❌ Error: ${err.message}</p><p style="color:#71717a;margin-top:8px">Make sure the backend is running at ${BACKEND_URL}</p>`;
+                log(`<span style="color:#ef4444">✗ AI report failed: ${err.message}</span>`);
+            }
+
+            btn.disabled = false;
+            btn.innerText = '🧠 Generate AI Report';
+        }
+    </script>
+
+</body>
+
+</html>

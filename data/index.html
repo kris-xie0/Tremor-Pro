@@ -1,393 +1,496 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<title>Tremor Dashboard</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <title>Tremor Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<style>
-    :root {
-        --bg: #0d0d0d;
-        --panel: rgba(255,255,255,0.05);
-        --accent1: #00ff87;
-        --accent2: #ffeb3b;
-        --accent3: #ff4455;
-        --muted: #888;
-    }
-    body { margin:0; padding:0; background:var(--bg); color:white; font-family:Inter, sans-serif; }
+    <style>
+        :root {
+            --bg: #0d0d0d;
+            --panel: rgba(255, 255, 255, 0.05);
+            --accent1: #00ff87;
+            --accent2: #ffeb3b;
+            --accent3: #ff4455;
+            --muted: #888;
+        }
 
-    .header { padding:20px 32px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.1); }
-    .header-title { font-size:26px; font-weight:600; }
-    .status { font-size:14px; color:var(--muted); }
+        body {
+            margin: 0;
+            padding: 0;
+            background: var(--bg);
+            color: white;
+            font-family: Inter, sans-serif;
+        }
 
-    .controls { padding:22px 32px 0 32px; display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
+        .header {
+            padding: 20px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
 
-    .btn {
-        background:#1c1c1c;
-        padding:10px 14px;
-        border-radius:12px;
-        border:1px solid rgba(255,255,255,0.12);
-        color:#fff;
-        cursor:pointer;
-        transition:0.15s;
-    }
-    .btn:hover { background:#2a2a2a; }
+        .header-title {
+            font-size: 26px;
+            font-weight: 600;
+        }
 
-    .scoreBox { display:flex; flex-direction:column; gap:6px; }
-    .scoreVal { font-size:20px; font-weight:700; }
-    .small { color:var(--muted); font-size:13px; }
+        .status {
+            font-size: 14px;
+            color: var(--muted);
+        }
 
-    .scoreBar { width:260px; height:14px; background:#222; border-radius:12px; overflow:hidden; }
-    .scoreFill { height:100%; width:0%; background:linear-gradient(90deg, var(--accent1), var(--accent2), var(--accent3)); transition:width 0.15s; }
+        .controls {
+            padding: 22px 32px 0 32px;
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
 
-    .layout {
-        display:grid;
-        grid-template-columns:1fr 420px;
-        gap:20px;
-        padding:24px 32px 40px 32px;
-    }
-    @media(max-width:980px){ .layout{ grid-template-columns:1fr; } }
+        .btn {
+            background: #1c1c1c;
+            padding: 10px 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #fff;
+            cursor: pointer;
+            transition: 0.15s;
+        }
 
-    .panel {
-        background:var(--panel);
-        padding:20px;
-        border-radius:16px;
-        border:1px solid rgba(255,255,255,0.06);
-        box-shadow:0 12px 32px rgba(0,0,0,0.4);
-    }
-    .panel-title { font-size:18px; font-weight:600; margin-bottom:10px; }
+        .btn:hover {
+            background: #2a2a2a;
+        }
 
-    canvas { width:100%; border-radius:10px; background:#0b0b0b; }
+        .scoreBox {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
 
-    .trendBox { height:120px; margin-top:8px; }
+        .scoreVal {
+            font-size: 20px;
+            font-weight: 700;
+        }
 
-    .meters { display:flex; gap:14px; align-items:flex-end; height:140px; margin-top:12px; }
-    .meter { width:70px; background:rgba(255,255,255,0.04); border-radius:10px; padding:8px; text-align:center; }
-    .meterFill { width:100%; height:0%; border-radius:6px; transition:height .15s; }
-    .meterLabel { margin-top:8px; font-size:12px; }
+        .small {
+            color: var(--muted);
+            font-size: 13px;
+        }
 
-    .class-box {
-        margin-top:16px;
-        padding:14px;
-        background:rgba(255,255,255,0.08);
-        border-radius:12px;
-        font-weight:600;
-        border:1px solid rgba(255,255,255,0.12);
-    }
+        .scoreBar {
+            width: 260px;
+            height: 14px;
+            background: #222;
+            border-radius: 12px;
+            overflow: hidden;
+        }
 
-    .summary { display:flex; flex-direction:column; gap:6px; margin-top:16px; }
-</style>
+        .scoreFill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--accent1), var(--accent2), var(--accent3));
+            transition: width 0.15s;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 1fr 420px;
+            gap: 20px;
+            padding: 24px 32px 40px 32px;
+        }
+
+        @media(max-width:980px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: var(--panel);
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+        }
+
+        .panel-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        canvas {
+            width: 100%;
+            border-radius: 10px;
+            background: #0b0b0b;
+        }
+
+        .trendBox {
+            height: 120px;
+            margin-top: 8px;
+        }
+
+        .meters {
+            display: flex;
+            gap: 14px;
+            align-items: flex-end;
+            height: 140px;
+            margin-top: 12px;
+        }
+
+        .meter {
+            width: 70px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 10px;
+            padding: 8px;
+            text-align: center;
+        }
+
+        .meterFill {
+            width: 100%;
+            height: 0%;
+            border-radius: 6px;
+            transition: height .15s;
+        }
+
+        .meterLabel {
+            margin-top: 8px;
+            font-size: 12px;
+        }
+
+        .class-box {
+            margin-top: 16px;
+            padding: 14px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            font-weight: 600;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .summary {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 16px;
+        }
+    </style>
 </head>
 
 <body>
 
-<!-- HEADER -->
-<div class="header">
-    <div class="header-title">Tremor Dashboard</div>
-    <div id="status" class="status">Connecting…</div>
-</div>
-
-<!-- CONTROLS -->
-<div class="controls">
-    <div class="scoreBox">
-        <div class="small">Tremor Score</div>
-        <div class="scoreVal" id="scoreVal">0.00 / 10</div>
-    </div>
-    <div class="scoreBar"><div id="scoreFill" class="scoreFill"></div></div>
-
-    <button id="startCalib" class="btn">Start Calibration</button>
-    <button id="saveCSV" class="btn">Download CSV</button>
-    <button id="savePNG" class="btn">Save Spectrogram</button>
-</div>
-
-<!-- MAIN LAYOUT -->
-<div class="layout">
-
-    <!-- LEFT SIDE -->
-    <div>
-
-        <!-- Waveform -->
-        <div class="panel">
-            <div class="panel-title">Waveform</div>
-            <div class="small" style="margin-bottom:6px">Filtered Acceleration (g)</div>
-            <canvas id="wf" height="200"></canvas>
-            <div class="small" style="margin-top:8px;text-align:center">X-axis: Time (~10 seconds)</div>
-        </div>
-
-        <div style="height:20px"></div>
-
-        <!-- Trend -->
-        <div class="panel">
-            <div class="panel-title">Score Trend (Last 2 minutes)</div>
-            <div class="trendBox">
-                <canvas id="trend" height="120"></canvas>
-            </div>
-        </div>
+    <!-- HEADER -->
+    <div class="header">
+        <div class="header-title">Tremor Dashboard</div>
+        <div id="status" class="status">Connecting…</div>
     </div>
 
-    <!-- RIGHT SIDE -->
-    <div>
-
-        <!-- Spectrogram -->
-        <div class="panel">
-            <div class="panel-title">Band Spectrogram</div>
-            <canvas id="spec" height="240"></canvas>
-
-            <div class="class-box" id="classBox">Classification: —</div>
+    <!-- CONTROLS -->
+    <div class="controls">
+        <div class="scoreBox">
+            <div class="small">Tremor Score</div>
+            <div class="scoreVal" id="scoreVal">0.00 / 10</div>
+        </div>
+        <div class="scoreBar">
+            <div id="scoreFill" class="scoreFill"></div>
         </div>
 
-        <div style="height:20px"></div>
-
-        <!-- Band Meters -->
-        <div class="panel">
-            <div class="panel-title">Band Meters</div>
-
-            <div class="meters">
-                <div class="meter">
-                    <div id="m3" class="meterFill" style="background:#66d9ff"></div>
-                    <div class="meterLabel">8–12 Hz</div>
-                </div>
-                <div class="meter">
-                    <div id="m2" class="meterFill" style="background:#ffd166"></div>
-                    <div class="meterLabel">6–8 Hz</div>
-                </div>
-                <div class="meter">
-                    <div id="m1" class="meterFill" style="background:#ff6666"></div>
-                    <div class="meterLabel">4–6 Hz</div>
-                </div>
-            </div>
-
-            <div class="summary">
-                <div><strong>Session Summary</strong></div>
-                <div class="small" id="sessDur">Duration: 0s</div>
-                <div class="small" id="sessAvg">Avg Score: 0.00</div>
-                <div class="small" id="sessPeak">Peak Score: 0.00</div>
-                <div class="small" id="sessDom">Dominant: —</div>
-            </div>
-        </div>
-
+        <button id="startCalib" class="btn">Start Calibration</button>
+        <button id="saveCSV" class="btn">Download CSV</button>
+        <button id="savePNG" class="btn">Save Spectrogram</button>
     </div>
-</div>
 
-<script>
-/* ===== WAVEFORM ===== */
-const wf = document.getElementById('wf');
-const wctx = wf.getContext('2d');
-let ax=[], ay=[], az=[];
-const MAX_WF = 500;
+    <!-- MAIN LAYOUT -->
+    <div class="layout">
 
-function resizeWF(){ wf.width = wf.clientWidth; }
-resizeWF();
-window.addEventListener('resize', resizeWF);
+        <!-- LEFT SIDE -->
+        <div>
 
-function drawWF(){
-    wctx.clearRect(0,0,wf.width,wf.height);
+            <!-- Waveform -->
+            <div class="panel">
+                <div class="panel-title">Waveform</div>
+                <div class="small" style="margin-bottom:6px">Filtered Acceleration (g)</div>
+                <canvas id="wf" height="200"></canvas>
+                <div class="small" style="margin-top:8px;text-align:center">X-axis: Time (~10 seconds)</div>
+            </div>
 
-    // grid
-    wctx.strokeStyle='rgba(255,255,255,0.07)';
-    for(let i=0;i<6;i++){
-        let y = (i/5)*wf.height;
-        wctx.beginPath(); wctx.moveTo(0,y); wctx.lineTo(wf.width,y); wctx.stroke();
-    }
+            <div style="height:20px"></div>
 
-    function plot(arr,color){
-        wctx.strokeStyle=color;
-        wctx.beginPath();
-        for(let i=0;i<arr.length;i++){
-            let x = (i/MAX_WF)*wf.width;
-            let y = wf.height/2 - arr[i]*80;
-            if(i===0) wctx.moveTo(x,y); else wctx.lineTo(x,y);
+            <!-- Trend -->
+            <div class="panel">
+                <div class="panel-title">Score Trend (Last 2 minutes)</div>
+                <div class="trendBox">
+                    <canvas id="trend" height="120"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT SIDE -->
+        <div>
+
+            <!-- Spectrogram -->
+            <div class="panel">
+                <div class="panel-title">Band Spectrogram</div>
+                <canvas id="spec" height="240"></canvas>
+
+                <div class="class-box" id="classBox">Classification: —</div>
+            </div>
+
+            <div style="height:20px"></div>
+
+            <!-- Band Meters -->
+            <div class="panel">
+                <div class="panel-title">Band Meters</div>
+
+                <div class="meters">
+                    <div class="meter">
+                        <div id="m3" class="meterFill" style="background:#66d9ff"></div>
+                        <div class="meterLabel">8–12 Hz</div>
+                    </div>
+                    <div class="meter">
+                        <div id="m2" class="meterFill" style="background:#ffd166"></div>
+                        <div class="meterLabel">6–8 Hz</div>
+                    </div>
+                    <div class="meter">
+                        <div id="m1" class="meterFill" style="background:#ff6666"></div>
+                        <div class="meterLabel">4–6 Hz</div>
+                    </div>
+                </div>
+
+                <div class="summary">
+                    <div><strong>Session Summary</strong></div>
+                    <div class="small" id="sessDur">Duration: 0s</div>
+                    <div class="small" id="sessAvg">Avg Score: 0.00</div>
+                    <div class="small" id="sessPeak">Peak Score: 0.00</div>
+                    <div class="small" id="sessDom">Dominant: —</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        /* ===== WAVEFORM ===== */
+        const wf = document.getElementById('wf');
+        const wctx = wf.getContext('2d');
+        let ax = [], ay = [], az = [];
+        const MAX_WF = 500;
+
+        function resizeWF() { wf.width = wf.clientWidth; }
+        resizeWF();
+        window.addEventListener('resize', resizeWF);
+
+        function drawWF() {
+            wctx.clearRect(0, 0, wf.width, wf.height);
+
+            // grid
+            wctx.strokeStyle = 'rgba(255,255,255,0.07)';
+            for (let i = 0; i < 6; i++) {
+                let y = (i / 5) * wf.height;
+                wctx.beginPath(); wctx.moveTo(0, y); wctx.lineTo(wf.width, y); wctx.stroke();
+            }
+
+            function plot(arr, color) {
+                wctx.strokeStyle = color;
+                wctx.beginPath();
+                for (let i = 0; i < arr.length; i++) {
+                    let x = (i / MAX_WF) * wf.width;
+                    let y = wf.height / 2 - arr[i] * 80;
+                    if (i === 0) wctx.moveTo(x, y); else wctx.lineTo(x, y);
+                }
+                wctx.stroke();
+            }
+
+            plot(ax, '#00ffff');  // X
+            plot(ay, '#ff6666');  // Y
+            plot(az, '#66ff88');  // Z
+
+            requestAnimationFrame(drawWF);
         }
-        wctx.stroke();
-    }
+        requestAnimationFrame(drawWF);
 
-    plot(ax,'#00ffff');  // X
-    plot(ay,'#ff6666');  // Y
-    plot(az,'#66ff88');  // Z
+        /* ===== SPECTROGRAM ===== */
+        const spec = document.getElementById('spec');
+        const sctx = spec.getContext('2d');
 
-    requestAnimationFrame(drawWF);
-}
-requestAnimationFrame(drawWF);
+        let off = document.createElement('canvas');
+        off.width = 300; off.height = spec.height;
+        let offctx = off.getContext('2d');
+        offctx.fillStyle = '#000'; offctx.fillRect(0, 0, off.width, off.height);
 
-/* ===== SPECTROGRAM ===== */
-const spec = document.getElementById('spec');
-const sctx = spec.getContext('2d');
+        function resizeSpec() {
+            spec.width = spec.clientWidth;
+            spec.height = spec.clientHeight;
+            off.height = spec.height;
+        }
+        resizeSpec();
+        window.addEventListener('resize', resizeSpec);
 
-let off = document.createElement('canvas');
-off.width = 300; off.height = spec.height;
-let offctx = off.getContext('2d');
-offctx.fillStyle='#000'; offctx.fillRect(0,0,off.width,off.height);
+        function cmap(v) {
+            v = Math.max(0, Math.min(1, v));
+            let r = Math.floor(255 * v);
+            let g = Math.floor(200 * v * 0.7);
+            let b = Math.floor(180 * (1 - v));
+            return `rgb(${r},${g},${b})`;
+        }
 
-function resizeSpec(){
-    spec.width = spec.clientWidth;
-    spec.height = spec.clientHeight;
-    off.height = spec.height;
-}
-resizeSpec();
-window.addEventListener('resize', resizeSpec);
+        function pushColumn(P1, P2, P3) {
+            const w = off.width, h = off.height;
+            let img = offctx.getImageData(1, 0, w - 1, h);
+            offctx.putImageData(img, 0, 0);
 
-function cmap(v){
-    v = Math.max(0,Math.min(1,v));
-    let r = Math.floor(255*v);
-    let g = Math.floor(200*v*0.7);
-    let b = Math.floor(180*(1-v));
-    return `rgb(${r},${g},${b})`;
-}
+            let stripe = h / 3;
+            offctx.fillStyle = cmap(Math.min(P3 / 25, 1)); offctx.fillRect(w - 1, 0, 1, stripe);
+            offctx.fillStyle = cmap(Math.min(P2 / 25, 1)); offctx.fillRect(w - 1, stripe, 1, stripe);
+            offctx.fillStyle = cmap(Math.min(P1 / 25, 1)); offctx.fillRect(w - 1, stripe * 2, 1, stripe);
+        }
 
-function pushColumn(P1,P2,P3){
-    const w=off.width, h=off.height;
-    let img = offctx.getImageData(1,0,w-1,h);
-    offctx.putImageData(img,0,0);
+        function drawSpec() {
+            sctx.clearRect(0, 0, spec.width, spec.height);
+            sctx.drawImage(off, 0, 0, spec.width, spec.height);
 
-    let stripe = h/3;
-    offctx.fillStyle=cmap(Math.min(P3/25,1)); offctx.fillRect(w-1,0,1,stripe);
-    offctx.fillStyle=cmap(Math.min(P2/25,1)); offctx.fillRect(w-1,stripe,1,stripe);
-    offctx.fillStyle=cmap(Math.min(P1/25,1)); offctx.fillRect(w-1,stripe*2,1,stripe);
-}
+            let stripe = spec.height / 3;
+            sctx.strokeStyle = 'rgba(255,255,255,0.08)';
+            for (let i = 1; i < 3; i++) {
+                sctx.beginPath();
+                sctx.moveTo(0, i * stripe);
+                sctx.lineTo(spec.width, i * stripe);
+                sctx.stroke();
+            }
 
-function drawSpec(){
-    sctx.clearRect(0,0,spec.width,spec.height);
-    sctx.drawImage(off,0,0,spec.width,spec.height);
+            requestAnimationFrame(drawSpec);
+        }
+        requestAnimationFrame(drawSpec);
 
-    let stripe=spec.height/3;
-    sctx.strokeStyle='rgba(255,255,255,0.08)';
-    for(let i=1;i<3;i++){
-        sctx.beginPath();
-        sctx.moveTo(0,i*stripe);
-        sctx.lineTo(spec.width,i*stripe);
-        sctx.stroke();
-    }
+        /* ===== TREND ===== */
+        const trend = document.getElementById('trend');
+        const tctx = trend.getContext('2d');
+        let trendArr = new Array(50).fill(0);
 
-    requestAnimationFrame(drawSpec);
-}
-requestAnimationFrame(drawSpec);
+        function resizeTrend() {
+            trend.width = trend.clientWidth;
+            trend.height = trend.clientHeight;
+        }
+        resizeTrend();
+        window.addEventListener('resize', resizeTrend);
 
-/* ===== TREND ===== */
-const trend=document.getElementById('trend');
-const tctx=trend.getContext('2d');
-let trendArr=new Array(50).fill(0);
+        function drawTrend() {
+            tctx.clearRect(0, 0, trend.width, trend.height);
+            tctx.strokeStyle = 'rgba(255,255,255,0.07)';
+            for (let i = 1; i < 6; i++) {
+                let y = (i / 6) * trend.height;
+                tctx.beginPath();
+                tctx.moveTo(0, y);
+                tctx.lineTo(trend.width, y);
+                tctx.stroke();
+            }
 
-function resizeTrend(){
-    trend.width = trend.clientWidth;
-    trend.height = trend.clientHeight;
-}
-resizeTrend();
-window.addEventListener('resize', resizeTrend);
+            tctx.strokeStyle = '#66ffcc';
+            tctx.beginPath();
+            trendArr.forEach((v, i) => {
+                let x = (i / (trendArr.length - 1)) * trend.width;
+                let y = trend.height - (v / 10) * trend.height;
+                if (i === 0) tctx.moveTo(x, y);
+                else tctx.lineTo(x, y);
+            });
+            tctx.stroke();
 
-function drawTrend(){
-    tctx.clearRect(0,0,trend.width,trend.height);
-    tctx.strokeStyle='rgba(255,255,255,0.07)';
-    for(let i=1;i<6;i++){
-        let y = (i/6)*trend.height;
-        tctx.beginPath();
-        tctx.moveTo(0,y);
-        tctx.lineTo(trend.width,y);
-        tctx.stroke();
-    }
+            requestAnimationFrame(drawTrend);
+        }
+        requestAnimationFrame(drawTrend);
 
-    tctx.strokeStyle='#66ffcc';
-    tctx.beginPath();
-    trendArr.forEach((v,i)=>{
-        let x = (i/(trendArr.length-1))*trend.width;
-        let y = trend.height - (v/10)*trend.height;
-        if(i===0) tctx.moveTo(x,y);
-        else tctx.lineTo(x,y);
-    });
-    tctx.stroke();
+        /* ===== UI elements ===== */
+        const m1 = document.getElementById('m1');
+        const m2 = document.getElementById('m2');
+        const m3 = document.getElementById('m3');
 
-    requestAnimationFrame(drawTrend);
-}
-requestAnimationFrame(drawTrend);
+        const classBox = document.getElementById('classBox');
+        const scoreFill = document.getElementById('scoreFill');
+        const scoreVal = document.getElementById('scoreVal');
 
-/* ===== UI elements ===== */
-const m1=document.getElementById('m1');
-const m2=document.getElementById('m2');
-const m3=document.getElementById('m3');
+        const sessDur = document.getElementById('sessDur');
+        const sessAvg = document.getElementById('sessAvg');
+        const sessPeak = document.getElementById('sessPeak');
+        const sessDom = document.getElementById('sessDom');
 
-const classBox=document.getElementById('classBox');
-const scoreFill=document.getElementById('scoreFill');
-const scoreVal=document.getElementById('scoreVal');
+        /* ===== SSE ===== */
+        const evt = new EventSource('/events');
 
-const sessDur=document.getElementById('sessDur');
-const sessAvg=document.getElementById('sessAvg');
-const sessPeak=document.getElementById('sessPeak');
-const sessDom=document.getElementById('sessDom');
+        evt.onopen = () => { document.getElementById('status').innerText = "Connected"; };
+        evt.onerror = () => { document.getElementById('status').innerText = "Disconnected"; };
 
-/* ===== SSE ===== */
-const evt=new EventSource('/events');
+        evt.addEventListener('sample', e => {
+            let d = JSON.parse(e.data);
+            ax.push(d.ax); ay.push(d.ay); az.push(d.az);
+            if (ax.length > MAX_WF) { ax.shift(); ay.shift(); az.shift(); }
+        });
 
-evt.onopen=()=>{ document.getElementById('status').innerText="Connected"; };
-evt.onerror=()=>{ document.getElementById('status').innerText="Disconnected"; };
+        evt.addEventListener('bands', e => {
+            let j = JSON.parse(e.data);
 
-evt.addEventListener('sample', e=>{
-    let d=JSON.parse(e.data);
-    ax.push(d.ax); ay.push(d.ay); az.push(d.az);
-    if(ax.length>MAX_WF){ ax.shift(); ay.shift(); az.shift(); }
-});
+            let P1 = j.b1, P2 = j.b2, P3 = j.b3;
+            m1.style.height = Math.min(P1 / 25 * 100, 100) + "%";
+            m2.style.height = Math.min(P2 / 25 * 100, 100) + "%";
+            m3.style.height = Math.min(P3 / 25 * 100, 100) + "%";
 
-evt.addEventListener('bands', e=>{
-    let j=JSON.parse(e.data);
+            let score = j.score;
+            scoreVal.innerText = score.toFixed(2) + " / 10";
+            scoreFill.style.width = (score * 10) + "%";
 
-    let P1=j.b1, P2=j.b2, P3=j.b3;
-    m1.style.height=Math.min(P1/25*100,100)+"%";
-    m2.style.height=Math.min(P2/25*100,100)+"%";
-    m3.style.height=Math.min(P3/25*100,100)+"%";
+            classBox.innerText = "Classification: " + j.type;
 
-    let score=j.score;
-    scoreVal.innerText=score.toFixed(2)+" / 10";
-    scoreFill.style.width=(score*10)+"%";
+            trendArr.shift();
+            trendArr.push(score);
+        });
 
-    classBox.innerText="Classification: "+j.type;
+        evt.addEventListener('bands_csv', e => {
+            let parts = e.data.split(",");
+            if (parts.length >= 3) {
+                pushColumn(parseFloat(parts[0]), parseFloat(parts[1]), parseFloat(parts[2]));
+            }
+        });
 
-    trendArr.shift();
-    trendArr.push(score);
-});
+        evt.addEventListener('calibrated', e => {
+            let j = JSON.parse(e.data);
+            alert("Calibration complete! Baseline: " + j.baseline.toFixed(6));
+        });
 
-evt.addEventListener('bands_csv', e=>{
-    let parts=e.data.split(",");
-    if(parts.length>=3){
-        pushColumn(parseFloat(parts[0]),parseFloat(parts[1]),parseFloat(parts[2]));
-    }
-});
+        /* ===== Calibration Button ===== */
+        document.getElementById('startCalib').onclick = async () => {
+            let b = document.getElementById('startCalib');
+            b.innerText = "Calibrating…";
+            b.disabled = true;
+            await fetch('/startCalib');
+            setTimeout(() => { b.innerText = "Start Calibration"; b.disabled = false; }, 5500);
+        };
 
-evt.addEventListener('calibrated', e=>{
-    let j=JSON.parse(e.data);
-    alert("Calibration complete! Baseline: "+j.baseline.toFixed(6));
-});
+        /* ===== CSV Export ===== */
+        document.getElementById('saveCSV').onclick = () => {
+            let csv = "timestamp,bx,by,bz,score\n";
+            let now = Date.now();
+            trendArr.forEach((s, i) => {
+                csv += `${now + i * 100},0,0,0,${s}\n`;
+            });
+            let blob = new Blob([csv], { type: 'text/csv' });
+            let a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'tremor_session.csv';
+            a.click();
+        };
 
-/* ===== Calibration Button ===== */
-document.getElementById('startCalib').onclick=async()=>{
-    let b=document.getElementById('startCalib');
-    b.innerText="Calibrating…";
-    b.disabled=true;
-    await fetch('/startCalib');
-    setTimeout(()=>{ b.innerText="Start Calibration"; b.disabled=false; }, 5500);
-};
+        /* ===== PNG Export ===== */
+        document.getElementById('savePNG').onclick = () => {
+            let url = spec.toDataURL('image/png');
+            let a = document.createElement('a');
+            a.href = url;
+            a.download = 'spectrogram.png';
+            a.click();
+        };
 
-/* ===== CSV Export ===== */
-document.getElementById('saveCSV').onclick=()=>{
-    let csv="timestamp,bx,by,bz,score\n";
-    let now=Date.now();
-    trendArr.forEach((s,i)=>{
-        csv+=`${now+i*100},0,0,0,${s}\n`;
-    });
-    let blob=new Blob([csv],{type:'text/csv'});
-    let a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);
-    a.download='tremor_session.csv';
-    a.click();
-};
-
-/* ===== PNG Export ===== */
-document.getElementById('savePNG').onclick=()=>{
-    let url=spec.toDataURL('image/png');
-    let a=document.createElement('a');
-    a.href=url;
-    a.download='spectrogram.png';
-    a.click();
-};
-
-</script>
+    </script>
 
 </body>
+
 </html>

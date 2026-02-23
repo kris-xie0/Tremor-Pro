@@ -1,0 +1,86 @@
+{
+  "metadata": {
+    "session_id": "S018",
+    "timestamp": "2026-02-20T18:42:00",
+    "duration_minutes": 30,
+    "sampling_rate_hz": 50,
+    "condition": "rest",
+    "medication_status": "unknown",
+    "tremor_score_scale": "0_to_10_log_scaled"
+  },
+
+  "frequency_profile": {
+    "band_power_mean": {
+      "4_6_hz": 0.81,
+      "6_8_hz": 0.22,
+      "8_12_hz": 0.09
+    },
+    "band_power_std": {
+      "4_6_hz": 0.12,
+      "6_8_hz": 0.08,
+      "8_12_hz": 0.03
+    },
+    "dominant_band": "4_6_hz",
+    "dominance_ratio": 3.8,
+    "dominant_band_percentage": 0.82,
+    "band_switch_count": 1
+  },
+
+  "intensity_profile": {
+    "tremor_score": {
+      "mean": 6.3,
+      "std": 0.9,
+      "min": 4.1,
+      "max": 8.4,
+      "p25": 5.4,
+      "p50": 6.2,
+      "p75": 7.1,
+      "p90": 8.0
+    },
+    "rms_mean": 0.73,
+    "noise_floor_adjusted_intensity": 0.68
+  },
+
+  "intensity_distribution": {
+    "low_fraction": 0.18,
+    "moderate_fraction": 0.46,
+    "high_fraction": 0.28,
+    "very_high_fraction": 0.08
+  },
+
+  "variability_profile": {
+    "coefficient_of_variation": 0.28,
+    "stability_index": 0.84,
+    "spectral_entropy": 0.21,
+    "window_to_window_variance": 0.15
+  },
+
+  "within_session_trend": {
+    "linear_slope_per_minute_score_units": 0.02,
+    "early_vs_late_change_percent": 12,
+    "fatigue_pattern_detected": true
+  },
+
+  "multi_session_trend": {
+    "dominant_band_consistency_last_3": "4_6_hz in 3/3 sessions",
+    "tremor_score_weekly_slope": "+0.4",
+    "severity_change_percent": "+12%",
+    "band_shift_detected": false
+  }
+}
+
+
+SESSION METADATA:
+Duration: 30 minutes
+Condition: Rest
+Tremor score scale: 0–10
+
+FREQUENCY PROFILE:
+Dominant band: 4–6 Hz
+Dominance ratio: 3.8
+Dominant band stability: 82%
+Band switches: 1
+
+INTENSITY PROFILE:
+Mean tremor score: 6.3
+...
