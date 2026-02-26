@@ -1,4 +1,5 @@
-.pio
+.pio/
 .vscode
 .env
 .gitignore
+node_modules/
