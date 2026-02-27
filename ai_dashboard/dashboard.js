@@ -16,7 +16,7 @@ let calibratedNoiseFloor = null;
 let timerInterval = null;
 let sessionHistory = JSON.parse(localStorage.getItem('tremorSessionHistory') || '[]');
 
-const BACKEND_URL = window.location.origin;
+const BACKEND_URL = import.meta.env?.VITE_BACKEND_URL || 'http://localhost:8000';
 const WAVE_LEN = 100;
 const waveBuffer = new Array(WAVE_LEN).fill(null);
 let waveIdx = 0;
@@ -552,6 +552,22 @@ async function generateReport() {
     confEl.className = 'ai-confidence-chip ' + cl;
     confEl.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg> Confidence: ${data.confidence_level}`;
     advEl.innerText = '⚠️ ' + data.advisory_note;
+
+    // Persist this session + AI interpretation into local SQLite profile store.
+    // This enables the longitudinal trends screen (profiles.html).
+    try {
+      await fetch(BACKEND_URL + '/profile/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session: summary,
+          clinical_summary: data.clinical_summary,
+          confidence_level: data.confidence_level
+        })
+      });
+    } catch (e) {
+      console.warn('Failed to store session in local profile DB', e);
+    }
 
     sessionHistory.push({ domBand: summary.frequency_profile.dominant_band, meanScore: summary.intensity_profile.tremor_score.mean, ts: Date.now() });
     if (sessionHistory.length > 10) sessionHistory.shift();

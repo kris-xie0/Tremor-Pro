@@ -3,3 +3,4 @@
 .env
 .gitignore
 node_modules/
+__pycache__

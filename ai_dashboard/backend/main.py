@@ -9,9 +9,12 @@ and returns a structured clinical report.
 """
 
 import os
-from typing import Optional
+import json
+import sqlite3
+from datetime import datetime, timezone
+from typing import Optional, List
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -95,6 +98,61 @@ class ClinicalResponse(BaseModel):
     confidence_level: str
     advisory_note: str
 
+
+class StoredSession(BaseModel):
+    id: int
+    session_id: str
+    timestamp: str
+    duration_minutes: float
+    mean_score: float
+    dominant_band: str
+    confidence_level: str
+
+
+class StoreSessionRequest(BaseModel):
+    session: SessionSummary
+    clinical_summary: str
+    confidence_level: str
+
+
+# ──────────────────────────────────────────────
+# SQLite (built-in) setup (local-only profiles DB)
+# ──────────────────────────────────────────────
+
+DB_PATH = os.environ.get("TREMOR_PROFILE_DB_PATH", "./profiles.db")
+
+
+def _connect_db() -> sqlite3.Connection:
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_db() -> None:
+    conn = _connect_db()
+    try:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS sessions (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              session_id TEXT NOT NULL,
+              timestamp TEXT NOT NULL,
+              duration_minutes REAL NOT NULL,
+              mean_score REAL NOT NULL,
+              dominant_band TEXT NOT NULL,
+              confidence_level TEXT NOT NULL,
+              clinical_summary TEXT NOT NULL,
+              raw_summary_json TEXT NOT NULL,
+              created_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_sessions_timestamp ON sessions(timestamp)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_sessions_session_id ON sessions(session_id)")
+        conn.commit()
+    finally:
+        conn.close()
+
 # ──────────────────────────────────────────────
 # FastAPI App
 # ──────────────────────────────────────────────
@@ -108,6 +166,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+async def on_startup() -> None:
+    # Ensure the local SQLite database and tables exist
+    init_db()
 
 # ──────────────────────────────────────────────
 # Prompt Builder
@@ -304,6 +368,135 @@ async def analyze(session: SessionSummary):
         confidence_level=confidence,
         advisory_note=advisory,
     )
+
+
+# ──────────────────────────────────────────────
+# Profile + session history endpoints (local SQLite)
+# ──────────────────────────────────────────────
+
+@app.post("/profile/session", response_model=StoredSession)
+async def store_session(
+    payload: StoreSessionRequest
+):
+    """
+    Persist a single session's biomarkers and AI interpretation
+    into a local SQLite database. This is intentionally single-profile
+    (no multi-user accounts) and runs only on the local machine.
+    """
+
+    s = payload.session
+    mean_score = s.intensity_profile.tremor_score.mean
+    dom_band = s.frequency_profile.dominant_band or ""
+    ts = s.metadata.timestamp or datetime.utcnow().isoformat()
+    session_id = s.metadata.session_id or f"S{int(datetime.now(tz=timezone.utc).timestamp())}"
+    created_at = datetime.now(tz=timezone.utc).isoformat()
+
+    conn = _connect_db()
+    try:
+        cur = conn.execute(
+            """
+            INSERT INTO sessions
+              (session_id, timestamp, duration_minutes, mean_score, dominant_band, confidence_level, clinical_summary, raw_summary_json, created_at)
+            VALUES
+              (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                session_id,
+                ts,
+                float(s.metadata.duration_minutes),
+                float(mean_score),
+                str(dom_band),
+                str(payload.confidence_level),
+                str(payload.clinical_summary),
+                json.dumps(s.model_dump()),
+                created_at,
+            ),
+        )
+        conn.commit()
+        new_id = int(cur.lastrowid)
+    finally:
+        conn.close()
+
+    return StoredSession(
+        id=new_id,
+        session_id=session_id,
+        timestamp=ts,
+        duration_minutes=float(s.metadata.duration_minutes),
+        mean_score=float(mean_score),
+        dominant_band=str(dom_band),
+        confidence_level=str(payload.confidence_level),
+    )
+
+
+@app.get("/profile/sessions", response_model=List[StoredSession])
+async def list_sessions():
+    """
+    Return a lightweight list of all stored sessions for the single
+    local profile. Frontend uses this for graphs and trend detection.
+    """
+
+    conn = _connect_db()
+    try:
+        rows = conn.execute(
+            """
+            SELECT id, session_id, timestamp, duration_minutes, mean_score, dominant_band, confidence_level
+            FROM sessions
+            ORDER BY timestamp ASC, id ASC
+            """
+        ).fetchall()
+    finally:
+        conn.close()
+
+    return [
+        StoredSession(
+            id=int(r["id"]),
+            session_id=str(r["session_id"]),
+            timestamp=str(r["timestamp"]),
+            duration_minutes=float(r["duration_minutes"]),
+            mean_score=float(r["mean_score"]),
+            dominant_band=str(r["dominant_band"]),
+            confidence_level=str(r["confidence_level"]),
+        )
+        for r in rows
+    ]
+
+
+@app.get("/profile/sessions/{session_id}")
+async def get_session_detail(session_id: str):
+    """
+    Return full stored JSON + AI summary for a single session.
+    Useful for deep dives from the profiles screen.
+    """
+
+    conn = _connect_db()
+    try:
+        row = conn.execute(
+            """
+            SELECT *
+            FROM sessions
+            WHERE session_id = ?
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (session_id,),
+        ).fetchone()
+    finally:
+        conn.close()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    return {
+        "id": int(row["id"]),
+        "session_id": str(row["session_id"]),
+        "timestamp": str(row["timestamp"]),
+        "duration_minutes": float(row["duration_minutes"]),
+        "mean_score": float(row["mean_score"]),
+        "dominant_band": str(row["dominant_band"]),
+        "confidence_level": str(row["confidence_level"]),
+        "clinical_summary": str(row["clinical_summary"]),
+        "raw_summary": json.loads(row["raw_summary_json"] or "{}"),
+    }
 
 
 # ──────────────────────────────────────────────
